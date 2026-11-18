@@ -1,8 +1,9 @@
 name: Deploy to GitHub Pages
 
+# 暫時只能手動執行；準備好部署時，加回下面這段讓 push 到 main 自動部署：
+#   push:
+#     branches: [main]
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
