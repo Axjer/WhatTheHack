@@ -1,6 +1,6 @@
 /**
  * 互動元件共用的互動狀態（CLAUDE.md「元件風格」）：
- * 0.2s 過渡、Active 縮小、Focus 2px 實線外框。Hover 色、外框顏色與 Default 陰影依所在背景由各元件補上。
+ * 0.2s 過渡、Active 縮小、Focus 2px 實線外框。Hover 色、外框顏色與 Default 陰影依所在背景由各元件補上（深藍底與文字連結不加陰影，見 CLAUDE.md）。
  */
 export const interactiveClass =
   'transition duration-200 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2';

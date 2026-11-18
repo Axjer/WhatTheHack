@@ -3,8 +3,8 @@ import { Link, NavLink } from 'react-router';
 import { pages } from '../routes';
 import { disableableClass, interactiveClass } from '../styles';
 
-/** 深藍導覽列上的互動元件：Default 輕微陰影、Hover 主色 hover 色、白色（surface-raised）focus 外框 */
-const navItemClass = `${interactiveClass} rounded-lg shadow-xs hover:bg-primary-hover focus-visible:outline-surface-raised`;
+/** 深藍導覽列上的互動元件：Hover 主色 hover 色、白色（surface-raised）focus 外框 */
+const navItemClass = `${interactiveClass} rounded-lg hover:bg-primary-hover focus-visible:outline-surface-raised`;
 
 /** 目前所在頁面以粗體加底線標示（不只靠顏色），保留背景色給 hover */
 function navLinkClass({ isActive }: { isActive: boolean }) {

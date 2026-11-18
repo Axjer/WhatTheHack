@@ -61,7 +61,7 @@ Issue 記錄在 GitHub 的 Axjer/WhatTheHack 儲存庫（使用 `gh` CLI 操作�
 
 - 圓角 8–12px、陰影很淡、卡片以淺色背景區分而非粗外框。
 - 互動狀態：
-  - Default：輕微陰影。
+  - Default：輕微陰影。例外：深藍（`--color-primary`）底上的元件與文字連結不加陰影（陰影看不出來或不合理）。
   - Hover：使用明確定義的 hover 色（如 `--color-primary-hover`），0.2s 過渡。
   - Active：`scale-95`。
   - Focus：2px 實線外框，`outline-offset-2`。
