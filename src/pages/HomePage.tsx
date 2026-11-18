@@ -51,17 +51,22 @@ type HomeSectionProps = {
   title: string;
   /** 標題只給輔助科技讀取，畫面上不顯示 */
   hideTitle?: boolean;
-  /** dark：滿版深藍底、白字。整頁只有數據區使用，作為唯一的色塊 */
-  tone?: 'light' | 'dark';
+  /** surface：頁面冷白底；raised：白底；navy：滿版深海軍藍底、白字（交錯排版） */
+  tone?: keyof typeof sectionToneClass;
   children: ReactNode;
 };
 
 /** 主視覺之後的內容區塊：以 H2 命名；背景滿版，內容置中 */
-function HomeSection({ title, hideTitle = false, tone = 'light', children }: HomeSectionProps) {
+const sectionToneClass = {
+  surface: '',
+  raised: 'bg-surface-raised',
+  navy: 'bg-navy text-surface-raised',
+};
+
+function HomeSection({ title, hideTitle = false, tone = 'surface', children }: HomeSectionProps) {
   const titleId = useId();
-  const background = tone === 'dark' ? 'bg-primary text-surface-raised' : '';
   return (
-    <section aria-labelledby={titleId} className={background}>
+    <section aria-labelledby={titleId} className={sectionToneClass[tone]}>
       <div className="mx-auto w-full max-w-6xl px-4 py-20 md:px-6 md:py-32">
         <h2 id={titleId} className={hideTitle ? 'sr-only' : 'reveal'}>
           {title}
@@ -105,7 +110,7 @@ export default function HomePage() {
         </h1>
       </section>
 
-      <HomeSection title="常見的擔心" hideTitle>
+      <HomeSection title="常見的擔心" hideTitle tone="navy">
         <ul className="flex flex-col gap-20 md:gap-32">
           {painPoints.map(({ problem, summary, detail, link }, index) => {
             const mirrored = index % 2 === 1;
@@ -128,12 +133,12 @@ export default function HomePage() {
         </ul>
       </HomeSection>
 
-      <HomeSection title="平台數據" tone="dark">
+      <HomeSection title="平台數據" tone="raised">
         <ul className="mt-12 grid gap-10 md:grid-cols-3 md:gap-12">
           {stats.map(({ value, label }, index) => (
-            <li key={index} className="reveal border-t border-surface-raised pt-6">
-              <p className="text-7xl font-bold md:text-8xl">{value}</p>
-              <p className="mt-4">{label}</p>
+            <li key={index} className="reveal rounded-xl bg-surface-sunken p-6 md:p-8">
+              <p className="text-7xl font-bold text-primary md:text-8xl">{value}</p>
+              <p className="mt-4 text-text-secondary">{label}</p>
             </li>
           ))}
         </ul>

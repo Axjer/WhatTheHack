@@ -5,12 +5,17 @@
   /* 清掉 Tailwind 預設色盤：只能使用下列 token（例如不會誤用綠色） */
   --color-*: initial;
 
-  --color-surface:oklch(98.5% 0.005 250);
+  --color-surface: oklch(98.5% 0.005 250);
   --color-surface-raised: oklch(100% 0 0);
+  /* 淺色區塊底（帶一點藍，與判定結果的「查無紀錄」灰區隔） */
+  --color-surface-sunken: oklch(95.5% 0.012 255);
   --color-text-primary: oklch(25% 0.03 255);
   --color-text-secondary: oklch(45% 0.03 255);
   --color-primary: oklch(42% 0.12 260);
   --color-primary-hover: oklch(36% 0.12 260);
+  /* 深海軍藍：導覽列與首頁交錯排版的滿版背景；hover 往亮的方向 */
+  --color-navy: oklch(27% 0.09 262);
+  --color-navy-hover: oklch(34% 0.1 262);
 
   /* 紅、黃、灰只用於判定結果 */
   --color-danger: oklch(55% 0.2 25);
@@ -56,7 +61,8 @@
  * 不支援 animation-timeline 或使用者要求減少動態時，不套用任何初始隱藏，內容直接顯示。
  *
  * .reveal：一般區塊。進入畫面時由下往上淡入，離開畫面時往上淡出。
- * .reveal-stagger：首頁交錯排版。往下捲時從空白慢慢淡入（約前 40% 的捲動距離）；
+ * .reveal-stagger：首頁交錯排版。時間軸底部內縮 20%：內容進到畫面一段距離前完全透明，
+ *   之後從空白慢慢淡入（約前 40% 的捲動距離）；
  *   往上離開時時間軸頂端內縮 25%，內容在碰到視窗頂端前就完全消失。
  * .reveal-stagger-late 晚一點出現、早一點消失，做出錯落感（用在說明卡片）。
  */
@@ -104,7 +110,7 @@
     .reveal-stagger,
     .reveal-stagger-late {
       animation: reveal-stagger linear both;
-      animation-timeline: view(25% 0%);
+      animation-timeline: view(25% 20%);
       animation-range: cover 0% cover 100%;
     }
 

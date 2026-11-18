@@ -27,7 +27,7 @@ Issue 記錄在 GitHub 的 Axjer/WhatTheHack 儲存庫（使用 `gh` CLI 操作�
 - 判定結果只有三種：🔴 已知惡意、🟡 可疑、⚪ 查無紀錄。**不使用綠色**（查無紀錄不代表安全）。
 - 每個燈號必須同時具備：顏色 + 圖示（⛔ / ⚠️ / ❔）+ 文字標籤，不可只靠顏色。
 - 燈號文字標籤字級至少等同 H2。
-- 紅、黃、灰**只用於判定結果**。最新情資頁的圖表與嚴重度使用主色深藍的深淺階層，並搭配文字。
+- 紅、黃、灰**只用於判定結果**（`--color-surface-sunken` 是帶藍的中性底色，不算判定結果的灰）。最新情資頁的圖表與嚴重度使用主色深藍的深淺階層，並搭配文字。
 
 ### 色彩 token
 
@@ -35,9 +35,11 @@ Issue 記錄在 GitHub 的 Axjer/WhatTheHack 儲存庫（使用 `gh` CLI 操作�
 |---|---|---|
 | `--color-surface` | `oklch(98.5% 0.005 250)` | 頁面底色（冷白） |
 | `--color-surface-raised` | `oklch(100% 0 0)` | 卡片 |
+| `--color-surface-sunken` | `oklch(95.5% 0.012 255)` | 淺色區塊底（如首頁數據卡）；帶藍，與「查無紀錄」灰區隔 |
 | `--color-text-primary` | `oklch(25% 0.03 255)` | 主要文字 |
 | `--color-text-secondary` | `oklch(45% 0.03 255)` | 次要文字 |
-| `--color-primary` | `oklch(42% 0.12 260)` | 主色深藍：按鈕、連結、導覽列 |
+| `--color-primary` | `oklch(42% 0.12 260)` | 主色深藍：按鈕、連結 |
+| `--color-navy` / `--color-navy-hover` | `oklch(27% 0.09 262)` / `oklch(34% 0.1 262)` | 深海軍藍：導覽列、首頁交錯排版的滿版背景（hover 往亮的方向） |
 | `--color-primary-hover` | `oklch(36% 0.12 260)` | 主色 hover |
 | `--color-danger` / `--color-danger-bg` | `oklch(55% 0.2 25)` / `oklch(95% 0.03 25)` | 已知惡意 |
 | `--color-warning` / `--color-warning-bg` | `oklch(80% 0.15 85)` / `oklch(96% 0.05 90)` | 可疑（黃底上一律用深色字） |
@@ -62,7 +64,7 @@ Issue 記錄在 GitHub 的 Axjer/WhatTheHack 儲存庫（使用 `gh` CLI 操作�
 
 - 圓角 8–12px、陰影很淡、卡片以淺色背景區分而非粗外框。
 - 互動狀態：
-  - Default：輕微陰影。例外：深藍（`--color-primary`）底上的元件與文字連結不加陰影（陰影看不出來或不合理）。
+  - Default：輕微陰影。例外：深藍（`--color-primary`、`--color-navy`）底上的元件與文字連結不加陰影（陰影看不出來或不合理）。
   - Hover：使用明確定義的 hover 色（如 `--color-primary-hover`），0.2s 過渡。
   - Active：`scale-95`。
   - Focus：2px 實線外框，`outline-offset-2`。

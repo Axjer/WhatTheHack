@@ -51,6 +51,17 @@ function keyframeSteps(source: string, name: string): Record<string, string> {
   return steps;
 }
 
+/** 交錯排版（.reveal-stagger*）各規則 animation-timeline: view(<頂端內縮>% <底部內縮>%) 的內縮值 */
+function staggerTimelineInsets(): { timeline: string; top: number; bottom: number }[] {
+  return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, selector]) => /\.reveal-stagger\b/.test(selector))
+    .flatMap(([, , body]) => declarationValues(`;${body}`, 'animation-timeline'))
+    .map((timeline) => {
+      const [, top = '0', bottom = '0'] = timeline.match(/^view\(\s*(\d+(?:\.\d+)?)%\s+(\d+(?:\.\d+)?)%/) ?? [];
+      return { timeline, top: Number(top), bottom: Number(bottom) };
+    });
+}
+
 describe('區塊捲動動畫', () => {
   it.each(['reveal', 'reveal-stagger'])('%s：進入畫面時出現、離開畫面時消失', (name) => {
     const steps = keyframeSteps(css, name);
@@ -61,18 +72,18 @@ describe('區塊捲動動畫', () => {
     expect(last).toMatch(/opacity:\s*0\b/);
   });
 
-  it('交錯排版上滑時，內容在碰到視窗頂端前就完全消失', () => {
-    const staggerRules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-      .filter(([, selector]) => /\.reveal-stagger\b/.test(selector))
-      .map(([, , body]) => `;${body}`);
-    const timelines = staggerRules.flatMap((body) => declarationValues(body, 'animation-timeline'));
+  it('交錯排版往下捲時，內容進到畫面一段距離後才從完全空白開始淡入', () => {
+    const insets = staggerTimelineInsets();
 
-    expect(timelines.length).toBeGreaterThan(0);
-    for (const timeline of timelines) {
-      const topInset = timeline.match(/^view\(\s*(\d+(?:\.\d+)?)%/);
-      expect(topInset, timeline).not.toBeNull();
-      expect(Number(topInset![1]), timeline).toBeGreaterThan(0);
-    }
+    expect(insets.length).toBeGreaterThan(0);
+    for (const { timeline, bottom } of insets) expect(bottom, timeline).toBeGreaterThan(0);
+  });
+
+  it('交錯排版上滑時，內容在碰到視窗頂端前就完全消失', () => {
+    const insets = staggerTimelineInsets();
+
+    expect(insets.length).toBeGreaterThan(0);
+    for (const { timeline, top } of insets) expect(top, timeline).toBeGreaterThan(0);
   });
 
   it('每條動畫範圍都延伸到離開畫面的階段', () => {

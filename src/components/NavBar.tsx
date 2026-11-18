@@ -3,8 +3,8 @@ import { Link, NavLink } from 'react-router';
 import { pages } from '../routes';
 import { disableableClass, interactiveClass } from '../styles';
 
-/** 深藍導覽列上的互動元件：Hover 主色 hover 色、白色（surface-raised）focus 外框 */
-const navItemClass = `${interactiveClass} rounded-lg hover:bg-primary-hover focus-visible:outline-surface-raised`;
+/** 深海軍藍導覽列上的互動元件：Hover 海軍藍 hover 色、白色（surface-raised）focus 外框 */
+const navItemClass = `${interactiveClass} rounded-lg hover:bg-navy-hover focus-visible:outline-surface-raised`;
 
 /** 目前所在頁面以粗體加底線標示（不只靠顏色），保留背景色給 hover */
 function navLinkClass({ isActive }: { isActive: boolean }) {
@@ -37,7 +37,7 @@ export default function NavBar() {
   ));
 
   return (
-    <header className="bg-primary text-surface-raised shadow-sm">
+    <header className="bg-navy text-surface-raised shadow-sm">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6">
         <Link to="/" className={`${navItemClass} px-2 py-1 text-xl font-bold`} onClick={closeMenu}>
           駭你好
