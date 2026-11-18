@@ -7,6 +7,10 @@
           {
             "type": "command",
             "command": "py \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/secret-scanner.py"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.agents/skills/git-guardrails-claude-code/scripts/block-dangerous-git.sh"
           }
         ]
       }

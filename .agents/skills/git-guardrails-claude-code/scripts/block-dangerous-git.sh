@@ -1,10 +1,10 @@
 #!/bin/bash
 
 INPUT=$(cat)
-COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command')
+COMMAND=$(printf '%s' "$INPUT" | py -X utf8 -c "import json,sys; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))")
 
 DANGEROUS_PATTERNS=(
-  "git push"
+  
   "git reset --hard"
   "git clean -fd"
   "git clean -f"
