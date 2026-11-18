@@ -8,7 +8,7 @@
   --color-surface: oklch(98.5% 0.005 250);
   --color-surface-raised: oklch(100% 0 0);
   /* 淺色區塊底（帶一點藍，與判定結果的「查無紀錄」灰區隔） */
-  --color-surface-sunken: oklch(95.5% 0.012 255);
+  --color-surface-sunken: oklch(97% 0.01 255);
   --color-text-primary: oklch(25% 0.03 255);
   --color-text-secondary: oklch(45% 0.03 255);
   --color-primary: oklch(42% 0.12 260);

@@ -34,16 +34,16 @@ const stats = [
 ];
 
 /** 頁面最底部的兩個行動區塊 */
-const actions: { title: string; description: string; link: PageLink & { variant: 'primary' | 'secondary' } }[] = [
+const actions: { title: string; description: string; link: PageLink }[] = [
   {
     title: '網址分析',
     description: '貼上一個網址，馬上看到判定結果與建議',
-    link: { label: '檢查網址', to: '/analyze', variant: 'primary' },
+    link: { label: '檢查網址', to: '/analyze' },
   },
   {
     title: '最新情資',
     description: '每天整理值得注意的資安新聞，以及已遭駭客利用的漏洞',
-    link: { label: '看最新情資', to: '/intel', variant: 'secondary' },
+    link: { label: '看最新情資', to: '/intel' },
   },
 ];
 
@@ -97,7 +97,7 @@ function VerdictDemo() {
   return (
     <figure
       aria-labelledby="verdict-demo-caption"
-      className="reveal flex flex-col gap-6 rounded-xl border border-text-primary/10 bg-surface-sunken/60 p-6 shadow-sm md:p-8"
+      className="reveal flex flex-col gap-6 rounded-xl border border-text-primary/10 bg-surface-sunken p-6 shadow-sm md:p-8"
     >
       <figcaption id="verdict-demo-caption" className="sr-only">
         範例：貼上網址後的判定結果
@@ -181,7 +181,7 @@ export default function HomePage() {
             <li key={title} className="reveal flex flex-col rounded-xl bg-surface-sunken p-6 md:p-10">
               <h3 className="text-2xl font-semibold md:text-3xl">{title}</h3>
               <p className="mt-3 mb-8 text-text-secondary">{description}</p>
-              <Link to={link.to} className={`mt-auto self-start ${buttonClass(link.variant)} font-semibold!`}>
+              <Link to={link.to} className={`mt-auto self-start ${buttonClass('primary')} font-semibold!`}>
                 {link.label}
                 <ArrowIcon />
               </Link>
