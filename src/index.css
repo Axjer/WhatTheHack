@@ -2,7 +2,10 @@
 
 /* 色彩與字型 token：以 CLAUDE.md「視覺風格規範」為準 */
 @theme {
-  --color-surface: oklch(98.5% 0.005 250);
+  /* 清掉 Tailwind 預設色盤：只能使用下列 token（例如不會誤用綠色） */
+  --color-*: initial;
+
+  --color-surface:oklch(98.5% 0.005 250);
   --color-surface-raised: oklch(100% 0 0);
   --color-text-primary: oklch(25% 0.03 255);
   --color-text-secondary: oklch(45% 0.03 255);
