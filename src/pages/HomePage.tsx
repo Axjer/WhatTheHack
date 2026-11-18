@@ -154,8 +154,8 @@ export default function HomePage() {
                   <h3 className="text-5xl font-normal md:text-6xl">{problem}</h3>
                   <p className="mt-4 text-xl font-semibold">{summary}</p>
                 </div>
-                <div className="reveal-stagger-late flex rounded-xl bg-surface-raised p-8 md:min-h-[26rem] md:items-center md:p-16">
-                  <p className="text-text-secondary">{detail}</p>
+                <div className="reveal-stagger-late flex rounded-xl border border-surface-raised/10 bg-navy-raised p-8 md:min-h-[26rem] md:items-center md:p-16">
+                  <p>{detail}</p>
                 </div>
               </li>
             );

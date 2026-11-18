@@ -16,6 +16,8 @@
   /* 深海軍藍（#161E2D）：導覽列與首頁交錯排版的滿版背景；hover 往亮的方向 */
   --color-navy: oklch(23.5% 0.031 262.6);
   --color-navy-hover: oklch(31% 0.04 262.6);
+  /* 海軍藍底上的卡片：比背景稍亮 */
+  --color-navy-raised: oklch(30% 0.035 262.6);
 
   /* 紅、黃、灰只用於判定結果 */
   --color-danger: oklch(55% 0.2 25);

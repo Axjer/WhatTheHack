@@ -16,6 +16,7 @@ const textOnBackground = [
   ['surface-raised', 'primary-hover'],
   ['surface-raised', 'navy'],
   ['surface-raised', 'navy-hover'],
+  ['surface-raised', 'navy-raised'],
   ['text-primary', 'surface-sunken'],
   ['text-secondary', 'surface-sunken'],
   ['primary', 'surface-sunken'],
