@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Route, Routes } from 'react-router';
+import Footer from './components/Footer';
 import NavBar from './components/NavBar';
 import AboutPage from './pages/AboutPage';
 import AnalyzePage from './pages/AnalyzePage';
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -5,6 +5,9 @@
 export const interactiveClass =
   'transition duration-200 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2';
 
+/** 海軍藍底上的互動元件（導覽列、頁尾）：Hover 海軍藍 hover 色、白色 focus 外框；深藍底不加陰影 */
+export const navyItemClass = `${interactiveClass} rounded-lg hover:bg-navy-hover focus-visible:outline-surface-raised`;
+
 /** 只有可停用的元件（button 等）才需要 Disabled 狀態 */
 export const disableableClass = 'disabled:cursor-not-allowed disabled:opacity-50';
 

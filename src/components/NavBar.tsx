@@ -1,15 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink } from 'react-router';
 import { navPages } from '../routes';
-import { disableableClass, interactiveClass } from '../styles';
-
-/** 深海軍藍導覽列上的互動元件：Hover 海軍藍 hover 色、白色（surface-raised）focus 外框 */
-const navItemClass = `${interactiveClass} rounded-lg hover:bg-navy-hover focus-visible:outline-surface-raised`;
+import { disableableClass, navyItemClass } from '../styles';
 
 /** 目前所在頁面以粗體加底線標示（不只靠顏色），保留背景色給 hover */
 function navLinkClass({ isActive }: { isActive: boolean }) {
   const current = isActive ? 'font-bold underline decoration-2 underline-offset-8' : '';
-  return `${navItemClass} block px-4 py-2 ${current}`;
+  return `${navyItemClass} block px-4 py-2 ${current}`;
 }
 
 export default function NavBar() {
@@ -39,7 +36,7 @@ export default function NavBar() {
   return (
     <header className="bg-navy text-surface-raised shadow-sm">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 md:px-6 md:py-6">
-        <Link to="/" className={`${navItemClass} px-2 py-1 text-2xl font-bold md:text-3xl`} onClick={closeMenu}>
+        <Link to="/" className={`${navyItemClass} px-2 py-1 text-2xl font-bold md:text-3xl`} onClick={closeMenu}>
           駭你好
         </Link>
 
@@ -50,7 +47,7 @@ export default function NavBar() {
         <button
           ref={toggleRef}
           type="button"
-          className={`${navItemClass} ${disableableClass} p-2 md:hidden`}
+          className={`${navyItemClass} ${disableableClass} p-2 md:hidden`}
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
           aria-label={menuOpen ? '關閉選單' : '開啟選單'}

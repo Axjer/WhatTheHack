@@ -32,7 +32,7 @@ describe('導覽列', () => {
     const user = userEvent.setup();
     renderAt('/intel');
 
-    await user.click(screen.getByRole('link', { name: '駭你好' }));
+    await user.click(within(screen.getByRole('banner')).getByRole('link', { name: '駭你好' }));
 
     expect(screen.getByRole('heading', { level: 1, name: /^駭你好，先別點！/ })).toBeInTheDocument();
   });
@@ -56,6 +56,29 @@ describe('導覽列', () => {
       .filter((link) => link.getAttribute('aria-current') === 'page')
       .map((link) => link.textContent);
     expect(current).toEqual(['最新情資']);
+  });
+});
+
+describe('頁尾', () => {
+  it.each(['/', '/intel', '/no-such-page'])('%s 最下方有頁尾，含 logo 連結、GitHub 連結與免責聲明', (path) => {
+    renderAt(path);
+    const footer = screen.getByRole('contentinfo');
+
+    expect(within(footer).getByRole('link', { name: '駭你好' })).toHaveAttribute('href', '/');
+    expect(within(footer).getByRole('link', { name: 'GitHub 專案原始碼' })).toHaveAttribute(
+      'href',
+      'https://github.com/Axjer/WhatTheHack',
+    );
+    expect(within(footer).getByText(/僅供參考/)).toBeInTheDocument();
+  });
+
+  it('點擊頁尾的 logo 回到首頁', async () => {
+    const user = userEvent.setup();
+    renderAt('/intel');
+
+    await user.click(within(screen.getByRole('contentinfo')).getByRole('link', { name: '駭你好' }));
+
+    expect(screen.getByRole('heading', { level: 1, name: /^駭你好，先別點！/ })).toBeInTheDocument();
   });
 });
 
