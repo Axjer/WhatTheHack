@@ -38,7 +38,7 @@ export default function NavBar() {
 
   return (
     <header className="bg-navy text-surface-raised shadow-sm">
-      <div className="mx-auto flex max-w-6xl items-center gap-12 px-4 py-4 md:px-6 md:py-6">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 md:px-6 md:py-6">
         <Link to="/" className={`${navItemClass} px-2 py-1 text-2xl font-bold md:text-3xl`} onClick={closeMenu}>
           駭你好
         </Link>
@@ -50,7 +50,7 @@ export default function NavBar() {
         <button
           ref={toggleRef}
           type="button"
-          className={`${navItemClass} ${disableableClass} ml-auto p-2 md:hidden`}
+          className={`${navItemClass} ${disableableClass} p-2 md:hidden`}
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
           aria-label={menuOpen ? '關閉選單' : '開啟選單'}
