@@ -13,7 +13,7 @@ export const textLinkClass =
   `${interactiveClass} inline-block text-primary underline underline-offset-4 ` +
   'hover:text-primary-hover focus-visible:outline-primary';
 
-const buttonBaseClass = `${interactiveClass} inline-flex items-center justify-center rounded-lg px-6 py-3 font-bold shadow-sm`;
+const buttonBaseClass = `${interactiveClass} inline-flex items-center justify-center rounded-lg px-8 py-4 text-lg font-bold shadow-sm`;
 
 /** 主按鈕：實心深藍 */
 export const primaryButtonClass =

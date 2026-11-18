@@ -24,16 +24,23 @@ const stats = [
   { value: '000', label: '數據待定' },
 ];
 
-const cardGridClass = 'mt-8 grid gap-4 md:grid-cols-3 md:gap-6';
-const cardClass = 'rounded-xl bg-surface-raised p-6 shadow-sm';
+type HomeSectionProps = {
+  title: string;
+  /** dark：滿版深藍底、白字。整頁只有數據區使用，作為唯一的色塊 */
+  tone?: 'light' | 'dark';
+  children: ReactNode;
+};
 
-/** 主視覺之後的內容區塊：以 H2 命名、捲動時滑入 */
-function HomeSection({ title, children }: { title: string; children: ReactNode }) {
+/** 主視覺之後的內容區塊：以 H2 命名；背景滿版，內容置中並在捲動時滑入 */
+function HomeSection({ title, tone = 'light', children }: HomeSectionProps) {
   const titleId = useId();
+  const background = tone === 'dark' ? 'bg-primary text-surface-raised' : '';
   return (
-    <section aria-labelledby={titleId} className="reveal mx-auto w-full max-w-6xl px-4 py-16 md:px-6 md:py-24">
-      <h2 id={titleId}>{title}</h2>
-      {children}
+    <section aria-labelledby={titleId} className={background}>
+      <div className="reveal mx-auto w-full max-w-6xl px-4 py-20 md:px-6 md:py-32">
+        <h2 id={titleId}>{title}</h2>
+        {children}
+      </div>
     </section>
   );
 }
@@ -45,9 +52,9 @@ export default function HomePage() {
         aria-labelledby="hero-title"
         className="mx-auto flex min-h-svh w-full max-w-6xl flex-col justify-center px-4 py-16 md:px-6"
       >
-        <h1 id="hero-title">
+        <h1 id="hero-title" className="max-w-3xl">
           <span className="block">駭你好，先別點！</span>
-          <span className="mt-2 block">
+          <span className="mt-4 block font-medium">
             貼上網址，用
             <em className="text-primary not-italic underline decoration-4 underline-offset-8">白話</em>
             告訴你能不能點
@@ -56,29 +63,29 @@ export default function HomePage() {
       </section>
 
       <HomeSection title="常見的擔心">
-        <ul className={cardGridClass}>
+        <ul className="mt-12 grid gap-10 md:grid-cols-3 md:gap-12">
           {painPoints.map(({ problem, solution }) => (
-            <li key={problem} className={cardClass}>
-              <h3 className="text-lg font-bold">{problem}</h3>
-              <p className="mt-2 text-text-secondary">{solution}</p>
+            <li key={problem} className="border-t-4 border-primary pt-6">
+              <h3 className="text-2xl font-bold">{problem}</h3>
+              <p className="mt-4 text-text-secondary">{solution}</p>
             </li>
           ))}
         </ul>
       </HomeSection>
 
-      <HomeSection title="平台數據">
-        <ul className={cardGridClass}>
+      <HomeSection title="平台數據" tone="dark">
+        <ul className="mt-12 grid gap-10 md:grid-cols-3 md:gap-12">
           {stats.map(({ value, label }, index) => (
-            <li key={index} className={cardClass}>
-              <p className="text-5xl font-bold text-primary md:text-6xl">{value}</p>
-              <p className="mt-2 text-text-secondary">{label}</p>
+            <li key={index} className="border-t border-surface-raised pt-6">
+              <p className="text-7xl font-bold md:text-8xl">{value}</p>
+              <p className="mt-4">{label}</p>
             </li>
           ))}
         </ul>
       </HomeSection>
 
       <HomeSection title="收到可疑連結？">
-        <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+        <div className="mt-12 flex flex-col gap-4 sm:flex-row">
           <Link to="/analyze" className={primaryButtonClass}>
             檢查網址
           </Link>
