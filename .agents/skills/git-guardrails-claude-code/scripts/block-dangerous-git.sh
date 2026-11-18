@@ -4,7 +4,6 @@ INPUT=$(cat)
 COMMAND=$(printf '%s' "$INPUT" | py -X utf8 -c "import json,sys; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))")
 
 DANGEROUS_PATTERNS=(
-  
   "git reset --hard"
   "git clean -fd"
   "git clean -f"
