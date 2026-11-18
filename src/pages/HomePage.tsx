@@ -1,3 +1,4 @@
+import { useId, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { primaryButtonClass, secondaryButtonClass } from '../styles';
 
@@ -23,8 +24,19 @@ const stats = [
   { value: '000', label: '數據待定' },
 ];
 
-const sectionClass = 'reveal mx-auto w-full max-w-6xl px-4 py-16 md:px-6 md:py-24';
+const cardGridClass = 'mt-8 grid gap-4 md:grid-cols-3 md:gap-6';
 const cardClass = 'rounded-xl bg-surface-raised p-6 shadow-sm';
+
+/** 主視覺之後的內容區塊：以 H2 命名、捲動時滑入 */
+function HomeSection({ title, children }: { title: string; children: ReactNode }) {
+  const titleId = useId();
+  return (
+    <section aria-labelledby={titleId} className="reveal mx-auto w-full max-w-6xl px-4 py-16 md:px-6 md:py-24">
+      <h2 id={titleId}>{title}</h2>
+      {children}
+    </section>
+  );
+}
 
 export default function HomePage() {
   return (
@@ -43,9 +55,8 @@ export default function HomePage() {
         </h1>
       </section>
 
-      <section aria-labelledby="pain-title" className={sectionClass}>
-        <h2 id="pain-title">常見的擔心</h2>
-        <ul className="mt-8 grid gap-4 md:grid-cols-3 md:gap-6">
+      <HomeSection title="常見的擔心">
+        <ul className={cardGridClass}>
           {painPoints.map(({ problem, solution }) => (
             <li key={problem} className={cardClass}>
               <h3 className="text-lg font-bold">{problem}</h3>
@@ -53,11 +64,10 @@ export default function HomePage() {
             </li>
           ))}
         </ul>
-      </section>
+      </HomeSection>
 
-      <section aria-labelledby="stats-title" className={sectionClass}>
-        <h2 id="stats-title">平台數據</h2>
-        <ul className="mt-8 grid gap-4 md:grid-cols-3 md:gap-6">
+      <HomeSection title="平台數據">
+        <ul className={cardGridClass}>
           {stats.map(({ value, label }, index) => (
             <li key={index} className={cardClass}>
               <p className="text-5xl font-bold text-primary md:text-6xl">{value}</p>
@@ -65,10 +75,9 @@ export default function HomePage() {
             </li>
           ))}
         </ul>
-      </section>
+      </HomeSection>
 
-      <section aria-labelledby="cta-title" className={sectionClass}>
-        <h2 id="cta-title">收到可疑連結？</h2>
+      <HomeSection title="收到可疑連結？">
         <div className="mt-8 flex flex-col gap-4 sm:flex-row">
           <Link to="/analyze" className={primaryButtonClass}>
             檢查網址
@@ -77,7 +86,7 @@ export default function HomePage() {
             看最新情資
           </Link>
         </div>
-      </section>
+      </HomeSection>
     </>
   );
 }
