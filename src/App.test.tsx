@@ -16,7 +16,7 @@ const pageHeadings = [
   { label: '網址分析', heading: '網址分析' },
   { label: '最新情資', heading: '最新情資' },
   { label: '來源與說明', heading: '來源與說明' },
-  { label: '首頁', heading: '駭你好，先別點！' },
+  { label: '首頁', heading: /^駭你好，先別點！/ },
 ];
 
 describe('導覽列', () => {

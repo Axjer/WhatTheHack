@@ -5,3 +5,5 @@ export const pages = [
   { path: '/intel', label: '最新情資' },
   { path: '/about', label: '來源與說明' },
 ] as const;
+
+export type PagePath = (typeof pages)[number]['path'];

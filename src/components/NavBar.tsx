@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink } from 'react-router';
 import { pages } from '../routes';
+import { disableableClass, interactiveClass } from '../styles';
 
-/** 導覽列互動元件共用的五種互動狀態（CLAUDE.md「元件風格」） */
-const interactive =
-  'rounded-lg shadow-xs transition duration-200 hover:bg-primary-hover active:scale-95 ' +
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ' +
-  'disabled:cursor-not-allowed disabled:opacity-50';
+/** 深藍導覽列上的互動元件：Default 輕微陰影、Hover 主色 hover 色、白色 focus 外框 */
+const navItemClass = `${interactiveClass} rounded-lg shadow-xs hover:bg-primary-hover focus-visible:outline-white`;
 
+/** 目前所在頁面以粗體加底線標示（不只靠顏色），保留背景色給 hover */
 function navLinkClass({ isActive }: { isActive: boolean }) {
-  return `${interactive} block px-4 py-2 ${isActive ? 'bg-primary-hover font-bold' : ''}`;
+  const current = isActive ? 'font-bold underline decoration-2 underline-offset-8' : '';
+  return `${navItemClass} block px-4 py-2 ${current}`;
 }
 
 export default function NavBar() {
@@ -39,7 +39,7 @@ export default function NavBar() {
   return (
     <header className="bg-primary text-white shadow-sm">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6">
-        <Link to="/" className={`${interactive} px-2 py-1 text-xl font-bold`} onClick={closeMenu}>
+        <Link to="/" className={`${navItemClass} px-2 py-1 text-xl font-bold`} onClick={closeMenu}>
           駭你好
         </Link>
 
@@ -50,7 +50,7 @@ export default function NavBar() {
         <button
           ref={toggleRef}
           type="button"
-          className={`${interactive} p-2 md:hidden`}
+          className={`${navItemClass} ${disableableClass} p-2 md:hidden`}
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
           aria-label={menuOpen ? '關閉選單' : '開啟選單'}
