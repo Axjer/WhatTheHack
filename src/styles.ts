@@ -16,8 +16,8 @@ export const textLinkClass =
 const buttonVariantClass = {
   /** 主按鈕：實心深藍 */
   primary: 'border-2 border-transparent bg-primary text-surface-raised hover:bg-primary-hover',
-  /** 次按鈕：深藍外框 */
-  secondary: 'border-2 border-primary bg-surface-raised text-primary hover:border-primary-hover hover:text-primary-hover',
+  /** 海軍藍卡片色按鈕：與海軍藍底上的卡片同色，hover 變深 */
+  navy: 'border-2 border-transparent bg-navy-raised text-surface-raised hover:bg-navy',
 };
 
 const buttonSizeClass = {

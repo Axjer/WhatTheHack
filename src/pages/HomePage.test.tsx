@@ -87,7 +87,7 @@ describe('行動按鈕', () => {
 
   it.each([
     { button: '檢查網址', heading: '網址分析' },
-    { button: '看最新情資', heading: '最新情資' },
+    { button: '了解情資', heading: '最新情資' },
   ])('「$button」前往 $heading 頁', async ({ button, heading }) => {
     const user = userEvent.setup();
     renderHome();

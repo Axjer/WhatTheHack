@@ -43,7 +43,7 @@ const actions: { title: string; description: string; link: PageLink }[] = [
   {
     title: '最新情資',
     description: '每天整理值得注意的資安新聞，以及已遭駭客利用的漏洞',
-    link: { label: '看最新情資', to: '/intel' },
+    link: { label: '了解情資', to: '/intel' },
   },
 ];
 
@@ -181,7 +181,7 @@ export default function HomePage() {
             <li key={title} className="reveal flex flex-col rounded-xl bg-surface-sunken p-6 md:p-10">
               <h3 className="text-2xl font-semibold md:text-3xl">{title}</h3>
               <p className="mt-3 mb-8 text-text-secondary">{description}</p>
-              <Link to={link.to} className={`mt-auto self-start ${buttonClass('primary')} font-semibold!`}>
+              <Link to={link.to} className={`mt-auto self-start ${buttonClass('navy')} font-semibold!`}>
                 {link.label}
                 <ArrowIcon />
               </Link>
