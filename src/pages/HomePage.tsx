@@ -104,12 +104,12 @@ function VerdictDemo() {
   return (
     <figure
       aria-labelledby="verdict-demo-caption"
-      className="reveal flex aspect-square flex-col items-start justify-center rounded-xl bg-surface-sunken/60 p-6 md:p-8"
+      className="reveal flex flex-col gap-6 rounded-xl border border-text-primary/10 bg-surface-sunken/60 p-6 shadow-sm md:p-8"
     >
       <figcaption id="verdict-demo-caption" className="sr-only">
         範例：貼上網址後的判定結果
       </figcaption>
-      <div className="grid font-mono text-lg md:text-xl">
+      <div className="grid rounded-lg border border-text-primary/10 bg-surface-raised px-4 py-3 font-mono text-lg md:text-xl">
         {/* --chars：打字動畫的步數，等於網址字元數（等寬字一步一字） */}
         <span
           aria-hidden="true"
@@ -120,13 +120,16 @@ function VerdictDemo() {
         </span>
         <span className="hero-demo-defanged col-start-1 row-start-1">{demoUrlDefanged}</span>
       </div>
-      <p
-        data-verdict
-        className="hero-demo-verdict mt-6 inline-flex items-center gap-3 rounded-lg bg-danger-bg px-4 py-2 text-h2 font-semibold text-danger"
-      >
-        <span aria-hidden="true">⛔</span>
-        已知惡意
-      </p>
+      <div className="hero-demo-verdict">
+        <p
+          data-verdict
+          className="inline-flex items-center gap-3 rounded-lg bg-danger-bg px-4 py-2 text-h2 font-semibold text-danger"
+        >
+          <span aria-hidden="true">⛔</span>
+          已知惡意
+        </p>
+        <p className="mt-3 text-sm text-text-secondary">這個網址在惡意網址清單中，請不要點開。</p>
+      </div>
     </figure>
   );
 }
@@ -138,12 +141,10 @@ export default function HomePage() {
         aria-labelledby="hero-title"
         className="mx-auto grid min-h-svh w-full max-w-6xl content-center items-center gap-12 px-4 py-16 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:px-6"
       >
-        <h1 id="hero-title" className="reveal max-w-3xl font-semibold">
-          <span className="block">駭你好，先別點！</span>
-          <span className="mt-4 block font-normal">
-            貼上網址，用
-            <em className="text-primary not-italic underline decoration-4 underline-offset-8">白話</em>
-            告訴你能不能點
+        <h1 id="hero-title" className="reveal max-w-3xl">
+          <span className="block font-bold">駭你好，先別點！</span>
+          <span className="mt-4 block text-[0.75em] font-normal text-text-secondary">
+            貼上網址，用<strong className="font-bold text-text-primary">白話</strong>告訴你能不能點
           </span>
         </h1>
         <VerdictDemo />

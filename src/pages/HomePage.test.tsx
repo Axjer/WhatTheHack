@@ -13,12 +13,12 @@ function renderHome() {
 }
 
 describe('首頁主視覺', () => {
-  it('兩行標題，「白話」被強調，沒有按鈕、連結、輸入框或圖片', () => {
+  it('兩行標題，「白話」以粗體強調，沒有按鈕、連結、輸入框或圖片', () => {
     renderHome();
     const hero = screen.getByRole('region', { name: '駭你好，先別點！貼上網址，用白話告訴你能不能點' });
 
     const heading = within(hero).getByRole('heading', { level: 1 });
-    expect(within(heading).getByText('白話').tagName).toBe('EM');
+    expect(within(heading).getByText('白話').tagName).toBe('STRONG');
     for (const role of ['button', 'link', 'textbox', 'img']) {
       expect(within(hero).queryAllByRole(role)).toHaveLength(0);
     }
@@ -32,6 +32,13 @@ describe('首頁主視覺', () => {
     expect(within(demo).getByText('hxxps://evil[.]com')).toBeInTheDocument();
     expect(within(demo).getByText('已知惡意')).toBeInTheDocument();
     expect(within(demo).queryAllByRole('link')).toHaveLength(0);
+  });
+
+  it('燈號下方用白話說明這個判定結果', () => {
+    renderHome();
+    const demo = screen.getByRole('figure', { name: '範例：貼上網址後的判定結果' });
+
+    expect(within(demo).getByText(/在惡意網址清單中.*不要點開/)).toBeInTheDocument();
   });
 });
 
