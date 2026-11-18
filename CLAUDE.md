@@ -40,7 +40,7 @@ Issue 記錄在 GitHub 的 Axjer/WhatTheHack 儲存庫（使用 `gh` CLI 操作�
 | `--color-text-secondary` | `oklch(45% 0.03 255)` | 次要文字 |
 | `--color-primary` | `oklch(42% 0.12 260)` | 主色深藍：按鈕、連結 |
 | `--color-primary-hover` | `oklch(36% 0.12 260)` | 主色 hover |
-| `--color-navy` / `--color-navy-hover` | `oklch(27% 0.09 262)` / `oklch(34% 0.1 262)` | 深海軍藍：導覽列、首頁交錯排版的滿版背景（hover 往亮的方向） |
+| `--color-navy` / `--color-navy-hover` | `oklch(23.5% 0.031 262.6)`（#161E2D）/ `oklch(31% 0.04 262.6)` | 深海軍藍：導覽列、首頁交錯排版的滿版背景（hover 往亮的方向） |
 | `--color-danger` / `--color-danger-bg` | `oklch(55% 0.2 25)` / `oklch(95% 0.03 25)` | 已知惡意 |
 | `--color-warning` / `--color-warning-bg` | `oklch(80% 0.15 85)` / `oklch(96% 0.05 90)` | 可疑（黃底上一律用深色字） |
 | `--color-unknown` / `--color-unknown-bg` | `oklch(50% 0.01 255)` / `oklch(94% 0.005 255)` | 查無紀錄（加虛線外框，與一般灰色卡片區隔） |

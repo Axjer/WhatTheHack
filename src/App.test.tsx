@@ -16,17 +16,25 @@ const pageHeadings = [
   { label: '網址分析', heading: '網址分析' },
   { label: '最新情資', heading: '最新情資' },
   { label: '來源與說明', heading: '來源與說明' },
-  { label: '首頁', heading: /^駭你好，先別點！/ },
 ];
 
 describe('導覽列', () => {
-  it('依序列出四個頁面', () => {
+  it('依序列出三個內頁（首頁由 logo 進入）', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: '主要導覽' });
     const labels = within(nav)
       .getAllByRole('link')
       .map((link) => link.textContent);
-    expect(labels).toEqual(['首頁', '網址分析', '最新情資', '來源與說明']);
+    expect(labels).toEqual(['網址分析', '最新情資', '來源與說明']);
+  });
+
+  it('點擊 logo 回到首頁', async () => {
+    const user = userEvent.setup();
+    renderAt('/intel');
+
+    await user.click(screen.getByRole('link', { name: '駭你好' }));
+
+    expect(screen.getByRole('heading', { level: 1, name: /^駭你好，先別點！/ })).toBeInTheDocument();
   });
 
   it('點擊連結會切換到對應頁面', async () => {
@@ -64,7 +72,7 @@ describe('未知路徑', () => {
 });
 
 describe('漢堡選單', () => {
-  it('預設收合，點擊後展開四個頁面連結', async () => {
+  it('預設收合，點擊後展開三個內頁連結', async () => {
     const user = userEvent.setup();
     renderAt('/');
     const toggle = screen.getByRole('button', { name: '開啟選單' });
@@ -76,7 +84,7 @@ describe('漢堡選單', () => {
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(toggle).toHaveAccessibleName('關閉選單');
     const menu = screen.getByRole('navigation', { name: '手機選單' });
-    expect(within(menu).getAllByRole('link')).toHaveLength(4);
+    expect(within(menu).getAllByRole('link')).toHaveLength(3);
   });
 
   it('從選單切換頁面後自動收合', async () => {

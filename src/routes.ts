@@ -6,4 +6,7 @@ export const pages = [
   { path: '/about', label: '來源與說明' },
 ] as const;
 
+/** 導覽列列出的頁面：首頁由 logo 進入，不另列連結 */
+export const navPages = pages.filter(({ path }) => path !== '/');
+
 export type PagePath = (typeof pages)[number]['path'];
