@@ -93,12 +93,39 @@ function DirectionIcon({ shape }: { shape: 'arrow' | 'chevron' }) {
   );
 }
 
+/**
+ * 主視覺旁的判定示範，三拍：逐字打出網址 → 轉成 defang 格式 → 出現燈號。
+ * 動畫在 index.css 的 .hero-demo-*；減少動態或未播放時直接是最終畫面（defang 網址＋燈號）。
+ */
+function VerdictDemo() {
+  return (
+    <figure aria-labelledby="verdict-demo-caption" className="reveal rounded-xl bg-surface-sunken p-6 md:p-8">
+      <figcaption id="verdict-demo-caption" className="sr-only">
+        範例：貼上網址後的判定結果
+      </figcaption>
+      <div className="grid font-mono text-lg md:text-xl">
+        <span aria-hidden="true" className="hero-demo-typed col-start-1 row-start-1 justify-self-start opacity-0">
+          https://evil.com
+        </span>
+        <span className="hero-demo-defanged col-start-1 row-start-1">hxxps://evil[.]com</span>
+      </div>
+      <p
+        data-verdict
+        className="hero-demo-verdict mt-6 inline-flex items-center gap-3 rounded-lg bg-danger-bg px-4 py-2 text-h2 font-semibold text-danger"
+      >
+        <span aria-hidden="true">⛔</span>
+        已知惡意
+      </p>
+    </figure>
+  );
+}
+
 export default function HomePage() {
   return (
     <>
       <section
         aria-labelledby="hero-title"
-        className="mx-auto flex min-h-svh w-full max-w-6xl flex-col justify-center px-4 py-16 md:px-6"
+        className="mx-auto grid min-h-svh w-full max-w-6xl content-center items-center gap-12 px-4 py-16 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:px-6"
       >
         <h1 id="hero-title" className="reveal max-w-3xl font-semibold">
           <span className="block">駭你好，先別點！</span>
@@ -108,6 +135,7 @@ export default function HomePage() {
             告訴你能不能點
           </span>
         </h1>
+        <VerdictDemo />
       </section>
 
       <HomeSection title="常見的擔心" hideTitle tone="navy">

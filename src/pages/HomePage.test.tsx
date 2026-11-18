@@ -13,15 +13,25 @@ function renderHome() {
 }
 
 describe('首頁主視覺', () => {
-  it('只放兩行標題，「白話」被強調，沒有按鈕、連結、輸入框或圖片', () => {
+  it('兩行標題，「白話」被強調，沒有按鈕、連結或輸入框', () => {
     renderHome();
     const hero = screen.getByRole('region', { name: '駭你好，先別點！貼上網址，用白話告訴你能不能點' });
 
     const heading = within(hero).getByRole('heading', { level: 1 });
     expect(within(heading).getByText('白話').tagName).toBe('EM');
-    for (const role of ['button', 'link', 'textbox', 'img']) {
+    for (const role of ['button', 'link', 'textbox']) {
       expect(within(hero).queryAllByRole(role)).toHaveLength(0);
     }
+  });
+
+  it('旁邊示範判定結果：網址以 defang 格式顯示（不可點擊），並給出「已知惡意」燈號', () => {
+    renderHome();
+    const hero = screen.getByRole('region', { name: '駭你好，先別點！貼上網址，用白話告訴你能不能點' });
+    const demo = within(hero).getByRole('figure', { name: '範例：貼上網址後的判定結果' });
+
+    expect(within(demo).getByText('hxxps://evil[.]com')).toBeInTheDocument();
+    expect(within(demo).getByText('已知惡意')).toBeInTheDocument();
+    expect(within(demo).queryAllByRole('link')).toHaveLength(0);
   });
 });
 
@@ -85,10 +95,11 @@ describe('行動按鈕', () => {
 });
 
 describe('配色', () => {
-  it('首頁不使用燈號顏色（紅、黃、灰只用於判定結果）', () => {
+  it('燈號顏色（紅、黃、灰）只出現在判定結果裡', () => {
     renderHome();
     const verdictColorClass = /-(danger|warning|unknown)(-bg)?(\/\d+)?$/;
     const offenders = Array.from(screen.getByRole('main').querySelectorAll('*'))
+      .filter((element) => !element.closest('[data-verdict]'))
       .flatMap((element) => Array.from(element.classList))
       .filter((className) => verdictColorClass.test(className));
     expect(offenders).toEqual([]);

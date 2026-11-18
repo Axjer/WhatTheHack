@@ -119,3 +119,62 @@
     }
   }
 }
+
+/*
+ * 首頁主視覺的判定示範：逐字打出網址 → 轉成 defang 格式 → 出現燈號，只播一次。
+ * 預設（未播放、減少動態）就是最終畫面：打字那行透明，defang 網址與燈號可見。
+ * 打字用 clip-path 逐字揭露（等寬字，16 字元 = 16 步），不動畫 width。
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-demo-typed {
+    animation: hero-demo-type 3.2s ease-out both;
+  }
+
+  .hero-demo-defanged {
+    animation: hero-demo-swap 3.2s ease-out both;
+  }
+
+  .hero-demo-verdict {
+    animation: hero-demo-verdict 4s ease-out both;
+  }
+}
+
+@keyframes hero-demo-type {
+  0%,
+  18.75% {
+    opacity: 1;
+    clip-path: inset(0 100% 0 0);
+    animation-timing-function: steps(16, end);
+  }
+  68.75%,
+  87.5% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    opacity: 0;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes hero-demo-swap {
+  0%,
+  87.5% {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes hero-demo-verdict {
+  0%,
+  90% {
+    opacity: 0;
+    translate: 0 0.5rem;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
