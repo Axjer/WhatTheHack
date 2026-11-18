@@ -13,13 +13,13 @@ function renderHome() {
 }
 
 describe('首頁主視覺', () => {
-  it('兩行標題，「白話」被強調，沒有按鈕、連結或輸入框', () => {
+  it('兩行標題，「白話」被強調，沒有按鈕、連結、輸入框或圖片', () => {
     renderHome();
     const hero = screen.getByRole('region', { name: '駭你好，先別點！貼上網址，用白話告訴你能不能點' });
 
     const heading = within(hero).getByRole('heading', { level: 1 });
     expect(within(heading).getByText('白話').tagName).toBe('EM');
-    for (const role of ['button', 'link', 'textbox']) {
+    for (const role of ['button', 'link', 'textbox', 'img']) {
       expect(within(hero).queryAllByRole(role)).toHaveLength(0);
     }
   });
@@ -95,6 +95,15 @@ describe('行動按鈕', () => {
 });
 
 describe('配色', () => {
+  it('首頁只有主視覺示範是判定結果', () => {
+    renderHome();
+    const verdicts = screen.getByRole('main').querySelectorAll('[data-verdict]');
+    const demo = screen.getByRole('figure', { name: '範例：貼上網址後的判定結果' });
+
+    expect(verdicts).toHaveLength(1);
+    expect(demo).toContainElement(verdicts[0] as HTMLElement);
+  });
+
   it('燈號顏色（紅、黃、灰）只出現在判定結果裡', () => {
     renderHome();
     const verdictColorClass = /-(danger|warning|unknown)(-bg)?(\/\d+)?$/;

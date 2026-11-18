@@ -95,21 +95,23 @@ describe('區塊捲動動畫', () => {
     }
   });
 
-  it('主視覺判定示範的動畫只在使用者未要求減少動態時播放，否則直接顯示最終畫面', () => {
-    const contexts = enclosingAtRules(css, /\.hero-demo-/);
-
-    expect(contexts.length).toBeGreaterThan(0);
-    for (const atRules of contexts) {
-      expect(atRules).toContain('@media (prefers-reduced-motion: no-preference)');
-    }
-  });
-
   it('.reveal 規則只在支援 animation-timeline: view() 且使用者未要求減少動態時生效', () => {
     const contexts = enclosingAtRules(css, /\.reveal\b/);
 
     expect(contexts.length).toBeGreaterThan(0);
     for (const atRules of contexts) {
       expect(atRules).toContain('@supports (animation-timeline: view())');
+      expect(atRules).toContain('@media (prefers-reduced-motion: no-preference)');
+    }
+  });
+});
+
+describe('主視覺判定示範', () => {
+  it('動畫只在使用者未要求減少動態時播放，否則直接顯示最終畫面', () => {
+    const contexts = enclosingAtRules(css, /\.hero-demo-/);
+
+    expect(contexts.length).toBeGreaterThan(0);
+    for (const atRules of contexts) {
       expect(atRules).toContain('@media (prefers-reduced-motion: no-preference)');
     }
   });

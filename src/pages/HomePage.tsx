@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { useId, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { buttonClass } from '../styles';
 
@@ -97,6 +97,9 @@ function DirectionIcon({ shape }: { shape: 'arrow' | 'chevron' }) {
  * 主視覺旁的判定示範，三拍：逐字打出網址 → 轉成 defang 格式 → 出現燈號。
  * 動畫在 index.css 的 .hero-demo-*；減少動態或未播放時直接是最終畫面（defang 網址＋燈號）。
  */
+const demoUrl = 'https://evil.com';
+const demoUrlDefanged = 'hxxps://evil[.]com';
+
 function VerdictDemo() {
   return (
     <figure aria-labelledby="verdict-demo-caption" className="reveal rounded-xl bg-surface-sunken p-6 md:p-8">
@@ -104,10 +107,15 @@ function VerdictDemo() {
         範例：貼上網址後的判定結果
       </figcaption>
       <div className="grid font-mono text-lg md:text-xl">
-        <span aria-hidden="true" className="hero-demo-typed col-start-1 row-start-1 justify-self-start opacity-0">
-          https://evil.com
+        {/* --chars：打字動畫的步數，等於網址字元數（等寬字一步一字） */}
+        <span
+          aria-hidden="true"
+          className="hero-demo-typed col-start-1 row-start-1 justify-self-start opacity-0"
+          style={{ '--chars': demoUrl.length } as CSSProperties}
+        >
+          {demoUrl}
         </span>
-        <span className="hero-demo-defanged col-start-1 row-start-1">hxxps://evil[.]com</span>
+        <span className="hero-demo-defanged col-start-1 row-start-1">{demoUrlDefanged}</span>
       </div>
       <p
         data-verdict
