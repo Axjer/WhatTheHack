@@ -41,7 +41,7 @@ Issue 記錄在 GitHub 的 Axjer/WhatTheHack 儲存庫（使用 `gh` CLI 操作�
 | `--color-primary-hover` | `oklch(36% 0.12 260)` | 主色 hover |
 | `--color-danger` / `--color-danger-bg` | `oklch(55% 0.2 25)` / `oklch(95% 0.03 25)` | 已知惡意 |
 | `--color-warning` / `--color-warning-bg` | `oklch(80% 0.15 85)` / `oklch(96% 0.05 90)` | 可疑（黃底上一律用深色字） |
-| `--color-unknown` / `--color-unknown-bg` | `oklch(55% 0.01 255)` / `oklch(94% 0.005 255)` | 查無紀錄（加虛線外框，與一般灰色卡片區隔） |
+| `--color-unknown` / `--color-unknown-bg` | `oklch(50% 0.01 255)` / `oklch(94% 0.005 255)` | 查無紀錄（加虛線外框，與一般灰色卡片區隔） |
 
 實作時以工具檢查對比度，微調至符合 WCAG AA。
 

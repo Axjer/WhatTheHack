@@ -1,0 +1,42 @@
+@import 'tailwindcss';
+
+/* 色彩與字型 token：以 CLAUDE.md「視覺風格規範」為準 */
+@theme {
+  --color-surface: oklch(98.5% 0.005 250);
+  --color-surface-raised: oklch(100% 0 0);
+  --color-text-primary: oklch(25% 0.03 255);
+  --color-text-secondary: oklch(45% 0.03 255);
+  --color-primary: oklch(42% 0.12 260);
+  --color-primary-hover: oklch(36% 0.12 260);
+
+  /* 紅、黃、灰只用於判定結果 */
+  --color-danger: oklch(55% 0.2 25);
+  --color-danger-bg: oklch(95% 0.03 25);
+  --color-warning: oklch(80% 0.15 85);
+  --color-warning-bg: oklch(96% 0.05 90);
+  --color-unknown: oklch(50% 0.01 255);
+  --color-unknown-bg: oklch(94% 0.005 255);
+
+  --font-sans: 'Noto Sans TC', system-ui, sans-serif;
+  /* 網址（含 defang 後的網址）一律用等寬字型：font-mono */
+  --font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, 'Liberation Mono', monospace;
+
+  --text-h1: clamp(1.5rem, 4vw + 1rem, 2.5rem);
+  --text-body: clamp(1rem, 1vw + 0.875rem, 1.125rem);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.7;
+  }
+
+  h1 {
+    font-size: var(--text-h1);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+}
