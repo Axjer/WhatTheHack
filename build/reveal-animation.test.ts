@@ -55,6 +55,17 @@ describe('區塊捲動動畫', () => {
     expect(last).toMatch(/opacity:\s*0\b/);
   });
 
+  it('上滑時內容在碰到視窗頂端前就完全消失（時間軸頂端內縮）', () => {
+    const timelines = [...css.matchAll(/[{;]\s*animation-timeline:\s*([^;{}]+);/g)].map(([, value]) => value.trim());
+
+    expect(timelines.length).toBeGreaterThan(0);
+    for (const timeline of timelines) {
+      const topInset = timeline.match(/^view\(\s*(\d+(?:\.\d+)?)%/);
+      expect(topInset, timeline).not.toBeNull();
+      expect(Number(topInset![1]), timeline).toBeGreaterThan(0);
+    }
+  });
+
   it('每條動畫範圍都延伸到離開畫面的階段', () => {
     const ranges = [...css.matchAll(/animation-range:\s*([^;]+);/g)].map(([, range]) => range.trim());
 

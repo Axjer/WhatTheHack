@@ -53,22 +53,25 @@
 
 /*
  * 區塊捲動動畫：只用原生 CSS scroll-driven animation。
- * 進入畫面時由下往上淡入，離開畫面時往上淡出；.reveal-late 晚一點出現、早一點消失，做出錯落感。
+ * 往下捲時從空白慢慢淡入（約捲動前 40% 的距離），停在畫面中段時完整顯示；
+ * 往上離開時加速淡出，時間軸頂端內縮 25%，內容在碰到視窗頂端前就完全消失。
+ * .reveal-late 晚一點出現、早一點消失，做出錯落感。
  * 不支援 animation-timeline 或使用者要求減少動態時，不套用任何初始隱藏，內容直接顯示。
  */
 @keyframes reveal {
   from {
     opacity: 0;
-    translate: 0 3rem;
+    translate: 0 4rem;
   }
-  25%,
-  75% {
+  40%,
+  60% {
     opacity: 1;
     translate: 0 0;
   }
+  90%,
   to {
     opacity: 0;
-    translate: 0 -3rem;
+    translate: 0 -4rem;
   }
 }
 
@@ -77,7 +80,7 @@
     .reveal,
     .reveal-late {
       animation: reveal linear both;
-      animation-timeline: view();
+      animation-timeline: view(25% 0%);
       animation-range: cover 0% cover 100%;
     }
 
