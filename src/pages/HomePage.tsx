@@ -109,7 +109,7 @@ function VerdictDemo() {
       <figcaption id="verdict-demo-caption" className="sr-only">
         範例：貼上網址後的判定結果
       </figcaption>
-      <div className="grid rounded-lg border border-text-primary/10 bg-surface-raised px-4 py-3 font-mono text-lg md:text-xl">
+      <div className="grid rounded-lg bg-surface-raised px-4 py-3 font-mono text-lg md:text-xl">
         {/* --chars：打字動畫的步數，等於網址字元數（等寬字一步一字） */}
         <span
           aria-hidden="true"
