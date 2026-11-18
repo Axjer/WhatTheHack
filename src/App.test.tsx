@@ -20,7 +20,7 @@ const pageHeadings = [
 ];
 
 describe('導覽列', () => {
-  it('桌面導覽列列出四個頁面', () => {
+  it('依序列出四個頁面', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: '主要導覽' });
     const labels = within(nav)
@@ -29,7 +29,7 @@ describe('導覽列', () => {
     expect(labels).toEqual(['首頁', '網址分析', '最新情資', '來源與說明']);
   });
 
-  it('點擊導覽連結可切換到每個頁面', async () => {
+  it('點擊連結會切換到對應頁面', async () => {
     const user = userEvent.setup();
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: '主要導覽' });
@@ -37,15 +37,37 @@ describe('導覽列', () => {
     for (const { label, heading } of pageHeadings) {
       await user.click(within(nav).getByRole('link', { name: label }));
       expect(screen.getByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
-      expect(within(nav).getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page');
     }
   });
 
-  it('漢堡選單預設收合，點擊後展開', async () => {
+  it('只把目前所在頁面標示為 aria-current', () => {
+    renderAt('/intel');
+    const nav = screen.getByRole('navigation', { name: '主要導覽' });
+    const current = within(nav)
+      .getAllByRole('link')
+      .filter((link) => link.getAttribute('aria-current') === 'page')
+      .map((link) => link.textContent);
+    expect(current).toEqual(['最新情資']);
+  });
+});
+
+describe('未知路徑', () => {
+  it('顯示找不到頁面，並可回到首頁', async () => {
+    const user = userEvent.setup();
+    renderAt('/no-such-page');
+    expect(screen.getByRole('heading', { level: 1, name: '找不到這個頁面' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: '回到首頁' }));
+
+    expect(screen.getByRole('heading', { level: 1, name: /^駭你好，先別點！/ })).toBeInTheDocument();
+  });
+});
+
+describe('漢堡選單', () => {
+  it('預設收合，點擊後展開四個頁面連結', async () => {
     const user = userEvent.setup();
     renderAt('/');
     const toggle = screen.getByRole('button', { name: '開啟選單' });
-
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByRole('navigation', { name: '手機選單' })).not.toBeInTheDocument();
 
@@ -57,7 +79,7 @@ describe('導覽列', () => {
     expect(within(menu).getAllByRole('link')).toHaveLength(4);
   });
 
-  it('從漢堡選單切換頁面後選單自動收合', async () => {
+  it('從選單切換頁面後自動收合', async () => {
     const user = userEvent.setup();
     renderAt('/');
     await user.click(screen.getByRole('button', { name: '開啟選單' }));
@@ -70,18 +92,15 @@ describe('導覽列', () => {
     expect(screen.getByRole('button', { name: '開啟選單' })).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('未知路徑顯示找不到頁面', () => {
-    renderAt('/no-such-page');
-    expect(screen.getByRole('heading', { level: 1, name: '找不到這個頁面' })).toBeInTheDocument();
-  });
-
-  it('按 Esc 收合漢堡選單', async () => {
+  it('按 Esc 收合選單，焦點回到選單按鈕', async () => {
     const user = userEvent.setup();
     renderAt('/');
     await user.click(screen.getByRole('button', { name: '開啟選單' }));
+    await user.tab();
 
     await user.keyboard('{Escape}');
 
     expect(screen.queryByRole('navigation', { name: '手機選單' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '開啟選單' })).toHaveFocus();
   });
 });
