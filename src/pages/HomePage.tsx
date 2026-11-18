@@ -141,9 +141,9 @@ export default function HomePage() {
         aria-labelledby="hero-title"
         className="mx-auto grid min-h-svh w-full max-w-6xl content-center items-center gap-12 px-4 py-16 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:px-6"
       >
-        <h1 id="hero-title" className="reveal max-w-3xl">
+        <h1 id="hero-title" className="reveal text-display">
           <span className="block font-bold">駭你好，先別點！</span>
-          <span className="mt-4 block text-[0.75em] font-normal text-text-secondary">
+          <span className="mt-4 block text-[0.6em] font-normal text-text-secondary">
             貼上網址，用<strong className="font-bold text-text-primary">白話</strong>告訴你能不能點
           </span>
         </h1>
