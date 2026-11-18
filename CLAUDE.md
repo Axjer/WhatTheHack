@@ -49,6 +49,7 @@ Issue 記錄在 GitHub 的 Axjer/WhatTheHack 儲存庫（使用 `gh` CLI 操作�
 
 - 中文：Noto Sans TC（Google Fonts）。網址（含 defang 後的網址）：等寬字型。
 - H1：`font-size: clamp(1.5rem, 4vw + 1rem, 2.5rem);`
+- H2：`font-size: clamp(1.25rem, 2vw + 0.75rem, 1.75rem);`（燈號文字標籤「至少等同 H2」以此為準）
 - 內文：`font-size: clamp(1rem, 1vw + 0.875rem, 1.125rem);`
 - 間距：4px 網格（`gap-4`、`p-6` 等），手機端較緊湊。
 
