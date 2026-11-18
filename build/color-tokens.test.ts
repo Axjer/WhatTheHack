@@ -8,6 +8,7 @@ const tokens = parseColorTokens(readFileSync(new URL('../src/index.css', import.
 /** 實際會出現的「文字 on 底色」組合（CLAUDE.md 色彩 token 用途） */
 const textOnBackground = [
   ['text-primary', 'surface'],
+  ['text-primary', 'surface-raised'],
   ['text-secondary', 'surface'],
   ['text-secondary', 'surface-raised'],
   ['primary', 'surface'],

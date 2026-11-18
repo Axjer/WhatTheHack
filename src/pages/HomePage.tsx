@@ -56,13 +56,13 @@ type HomeSectionProps = {
   children: ReactNode;
 };
 
-/** 主視覺之後的內容區塊：以 H2 命名；背景滿版，內容置中 */
 const sectionToneClass = {
   surface: '',
   raised: 'bg-surface-raised',
   navy: 'bg-navy text-surface-raised',
 };
 
+/** 主視覺之後的內容區塊：以 H2 命名；背景滿版，內容置中 */
 function HomeSection({ title, hideTitle = false, tone = 'surface', children }: HomeSectionProps) {
   const titleId = useId();
   return (
@@ -120,7 +120,7 @@ export default function HomePage() {
                   <h3 className="text-3xl font-bold md:text-4xl">{problem}</h3>
                   <p className="mt-3 text-lg font-bold">{summary}</p>
                 </div>
-                <div className="reveal-stagger-late rounded-xl bg-surface-raised p-6 shadow-sm md:p-8">
+                <div className="reveal-stagger-late rounded-xl bg-surface-raised p-6 md:p-8">
                   <p className="text-text-secondary">{detail}</p>
                   <Link to={link.to} className={`mt-6 ${buttonClass('secondary', 'md')}`}>
                     {link.label}
