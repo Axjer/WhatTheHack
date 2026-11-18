@@ -14,7 +14,7 @@ Issue 記錄在 GitHub 的 Axjer/WhatTheHack 儲存庫（使用 `gh` CLI 操作�
 
 ## 視覺風格規範
 
-專案「駭你好」：給非資安人員的白話資安平台。使用 Tailwind CSS v4，色彩一律以 OKLCH 定義為 design token（`@theme`）。術語以 `GLOSSARY.md` 為準。
+專案「駭你好」：給非資安人員的白話資安平台。技術棧：React + Vite + Tailwind CSS v4（純靜態網站）。色彩一律以 OKLCH 定義為 design token（`@theme`）。術語以 `GLOSSARY.md` 為準。
 
 ### 整體方向
 
