@@ -175,10 +175,10 @@ export default function HomePage() {
         </ul>
       </HomeSection>
 
-      <HomeSection title="收到可疑連結？" hideTitle>
+      <HomeSection title="收到可疑連結？" hideTitle tone="raised">
         <ul className="grid gap-6 md:grid-cols-2">
           {actions.map(({ title, description, link }) => (
-            <li key={title} className="reveal flex flex-col rounded-xl bg-surface-raised p-6 shadow-sm md:p-10">
+            <li key={title} className="reveal flex flex-col rounded-xl bg-surface-sunken p-6 md:p-10">
               <h3 className="text-2xl font-semibold md:text-3xl">{title}</h3>
               <p className="mt-3 mb-8 text-text-secondary">{description}</p>
               <Link to={link.to} className={`mt-auto self-start ${buttonClass(link.variant)} font-semibold!`}>
