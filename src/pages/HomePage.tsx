@@ -144,22 +144,17 @@ export default function HomePage() {
       </section>
 
       <HomeSection title="常見的擔心" hideTitle tone="navy">
-        <ul className="flex flex-col gap-20 md:gap-32">
+        <ul className="flex flex-col gap-16 md:gap-10">
           {painPoints.map(({ problem, summary, detail }, index) => {
             const mirrored = index % 2 === 1;
             return (
-              <li
-                key={problem}
-                className={`grid items-center gap-6 md:justify-center md:gap-10 ${
-                  mirrored ? 'md:grid-cols-[minmax(0,36rem)_minmax(0,20rem)]' : 'md:grid-cols-[minmax(0,20rem)_minmax(0,36rem)]'
-                }`}
-              >
-                {/* 文字靠向卡片：卡片在右時文字靠右，卡片在左時文字靠左 */}
-                <div className={`reveal-stagger ${mirrored ? 'md:order-2' : 'md:text-right'}`}>
-                  <h3 className="text-3xl font-semibold md:text-4xl">{problem}</h3>
-                  <p className="mt-3 text-lg">{summary}</p>
+              <li key={problem} className="grid items-center gap-8 md:grid-cols-2 md:gap-10">
+                {/* 卡片在右時文字靠左，卡片在左時文字靠右；一律貼著頁面邊緣 */}
+                <div className={`reveal-stagger ${mirrored ? 'md:order-2 md:text-right' : ''}`}>
+                  <h3 className="text-5xl font-normal md:text-6xl">{problem}</h3>
+                  <p className="mt-4 text-xl font-semibold">{summary}</p>
                 </div>
-                <div className="reveal-stagger-late rounded-xl bg-surface-raised p-6 md:p-8">
+                <div className="reveal-stagger-late flex rounded-xl bg-surface-raised p-8 md:min-h-[26rem] md:items-center md:p-16">
                   <p className="text-text-secondary">{detail}</p>
                 </div>
               </li>
