@@ -34,6 +34,16 @@ describe('痛點與解法', () => {
       .map((heading) => heading.textContent);
     expect(painPoints).toEqual(['術語看不懂', '怕誤點', '怕隱私外洩']);
   });
+
+  it.each(['看判定方式', '認識警訊', '隱私與限制'])('「%s」連到來源與說明頁', async (linkName) => {
+    const user = userEvent.setup();
+    renderHome();
+    const section = screen.getByRole('region', { name: '常見的擔心' });
+
+    await user.click(within(section).getByRole('link', { name: linkName }));
+
+    expect(screen.getByRole('heading', { level: 1, name: '來源與說明' })).toBeInTheDocument();
+  });
 });
 
 describe('數據卡', () => {
@@ -49,6 +59,15 @@ describe('行動按鈕', () => {
     renderHome();
     const sections = within(screen.getByRole('main')).getAllByRole('region');
     expect(sections.at(-1)).toBe(screen.getByRole('region', { name: '收到可疑連結？' }));
+  });
+
+  it('分成「網址分析」與「最新情資」兩個區塊', () => {
+    renderHome();
+    const cta = screen.getByRole('region', { name: '收到可疑連結？' });
+    const blocks = within(cta)
+      .getAllByRole('heading', { level: 3 })
+      .map((heading) => heading.textContent);
+    expect(blocks).toEqual(['網址分析', '最新情資']);
   });
 
   it.each([

@@ -27,7 +27,34 @@ function enclosingAtRules(source: string, selector: RegExp): string[][] {
   return found;
 }
 
+/** 取出 @keyframes <name> 的各個步驟：{ 步驟選擇器: 宣告內容 } */
+function keyframeSteps(source: string, name: string): Record<string, string> {
+  const start = source.indexOf(`@keyframes ${name}`);
+  if (start === -1) return {};
+  const open = source.indexOf('{', start);
+  let depth = 0;
+  let end = open;
+  for (; end < source.length; end++) {
+    if (source[end] === '{') depth++;
+    if (source[end] === '}' && --depth === 0) break;
+  }
+  const steps: Record<string, string> = {};
+  for (const [, selector, body] of source.slice(open + 1, end).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    for (const step of selector.split(',')) steps[step.trim()] = body;
+  }
+  return steps;
+}
+
 describe('捲動滑入動畫', () => {
+  it('區塊進入畫面時出現、離開畫面時消失', () => {
+    const steps = keyframeSteps(css, 'reveal');
+    const first = steps['from'] ?? steps['0%'];
+    const last = steps['to'] ?? steps['100%'];
+
+    expect(first).toMatch(/opacity:\s*0\b/);
+    expect(last).toMatch(/opacity:\s*0\b/);
+  });
+
   it('.reveal 規則只在支援 animation-timeline: view() 且使用者未要求減少動態時生效', () => {
     const contexts = enclosingAtRules(css, /\.reveal\b/);
 

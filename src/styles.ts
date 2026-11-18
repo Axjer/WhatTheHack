@@ -13,13 +13,22 @@ export const textLinkClass =
   `${interactiveClass} inline-block text-primary underline underline-offset-4 ` +
   'hover:text-primary-hover focus-visible:outline-primary';
 
-const buttonBaseClass = `${interactiveClass} inline-flex items-center justify-center rounded-lg px-8 py-4 text-lg font-bold shadow-sm`;
+const buttonVariantClass = {
+  /** 主按鈕：實心深藍 */
+  primary: 'border-2 border-transparent bg-primary text-surface-raised hover:bg-primary-hover',
+  /** 次按鈕：深藍外框 */
+  secondary: 'border-2 border-primary bg-surface-raised text-primary hover:border-primary-hover hover:text-primary-hover',
+};
 
-/** 主按鈕：實心深藍 */
-export const primaryButtonClass =
-  `${buttonBaseClass} bg-primary text-surface-raised hover:bg-primary-hover focus-visible:outline-primary`;
+const buttonSizeClass = {
+  md: 'px-4 py-2',
+  lg: 'px-8 py-4 text-lg',
+};
 
-/** 次按鈕：深藍外框 */
-export const secondaryButtonClass =
-  `${buttonBaseClass} border-2 border-primary bg-surface-raised text-primary ` +
-  'hover:border-primary-hover hover:text-primary-hover focus-visible:outline-primary';
+/** 按鈕樣式（也用在外觀像按鈕的連結） */
+export function buttonClass(variant: keyof typeof buttonVariantClass, size: keyof typeof buttonSizeClass = 'lg') {
+  return (
+    `${interactiveClass} inline-flex items-center justify-center gap-2 rounded-lg font-bold shadow-sm ` +
+    `focus-visible:outline-primary ${buttonVariantClass[variant]} ${buttonSizeClass[size]}`
+  );
+}
