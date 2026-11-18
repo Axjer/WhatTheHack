@@ -45,7 +45,7 @@ function keyframeSteps(source: string, name: string): Record<string, string> {
   return steps;
 }
 
-describe('捲動滑入動畫', () => {
+describe('區塊捲動動畫', () => {
   it('區塊進入畫面時出現、離開畫面時消失', () => {
     const steps = keyframeSteps(css, 'reveal');
     const first = steps['from'] ?? steps['0%'];
@@ -53,6 +53,15 @@ describe('捲動滑入動畫', () => {
 
     expect(first).toMatch(/opacity:\s*0\b/);
     expect(last).toMatch(/opacity:\s*0\b/);
+  });
+
+  it('每條動畫範圍都延伸到離開畫面的階段', () => {
+    const ranges = [...css.matchAll(/animation-range:\s*([^;]+);/g)].map(([, range]) => range.trim());
+
+    expect(ranges.length).toBeGreaterThan(0);
+    for (const range of ranges) {
+      expect(range, range).toMatch(/\b(cover|exit)\b[^,]*$/);
+    }
   });
 
   it('.reveal 規則只在支援 animation-timeline: view() 且使用者未要求減少動態時生效', () => {

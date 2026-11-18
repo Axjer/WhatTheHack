@@ -2,7 +2,10 @@ import { useId, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { buttonClass } from '../styles';
 
-const painPoints = [
+/** 連到站內某頁的按鈕 */
+type PageLink = { label: string; to: string };
+
+const painPoints: { problem: string; summary: string; detail: string; link: PageLink }[] = [
   {
     problem: '術語看不懂',
     summary: '白話說明，每個結果都附下一步',
@@ -12,7 +15,7 @@ const painPoints = [
   {
     problem: '怕誤點',
     summary: '先查再點',
-    detail: '收到連結不確定能不能點？把網址貼上來，我們會檢查它是否在惡意網址清單中，以及有沒有可疑的警訊。',
+    detail: '收到連結不確定能不能點？把網址貼上來，我們會檢查它是否在惡意網址清單中，以及是否符合任何一項警訊。',
     link: { label: '認識警訊', to: '/about' },
   },
   {
@@ -31,7 +34,7 @@ const stats = [
 ];
 
 /** 頁面最底部的兩個行動區塊 */
-const actions = [
+const actions: { title: string; description: string; link: PageLink & { variant: 'primary' | 'secondary' } }[] = [
   {
     title: '網址分析',
     description: '貼上一個網址，馬上看到判定結果與建議。',
@@ -42,7 +45,7 @@ const actions = [
     description: '每天整理值得注意的資安新聞，以及已遭駭客利用的漏洞。',
     link: { label: '看最新情資', to: '/intel', variant: 'secondary' },
   },
-] as const;
+];
 
 type HomeSectionProps = {
   title: string;
@@ -69,18 +72,18 @@ function HomeSection({ title, hideTitle = false, tone = 'light', children }: Hom
   );
 }
 
-function ArrowIcon() {
+/** 按鈕裡的方向圖示：arrow 用於行動區塊，chevron 用於說明卡片 */
+function DirectionIcon({ shape }: { shape: 'arrow' | 'chevron' }) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 16 16" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M2 8h12M9 3l5 5-5 5" />
-    </svg>
-  );
-}
-
-function ChevronIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M6 3l5 5-5 5" />
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className={shape === 'arrow' ? 'size-5' : 'size-4'}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d={shape === 'arrow' ? 'M2 8h12M9 3l5 5-5 5' : 'M6 3l5 5-5 5'} />
     </svg>
   );
 }
@@ -92,7 +95,7 @@ export default function HomePage() {
         aria-labelledby="hero-title"
         className="mx-auto flex min-h-svh w-full max-w-6xl flex-col justify-center px-4 py-16 md:px-6"
       >
-        <h1 id="hero-title" className="max-w-3xl">
+        <h1 id="hero-title" className="reveal max-w-3xl">
           <span className="block">駭你好，先別點！</span>
           <span className="mt-4 block font-medium">
             貼上網址，用
@@ -110,13 +113,13 @@ export default function HomePage() {
               <li key={problem} className="grid items-center gap-6 md:grid-cols-2 md:gap-16">
                 <div className={`reveal ${mirrored ? 'md:order-2 md:text-right' : ''}`}>
                   <h3 className="text-3xl font-bold md:text-4xl">{problem}</h3>
-                  <p className="mt-3 text-lg font-medium text-primary">{summary}</p>
+                  <p className="mt-3 text-lg font-bold">{summary}</p>
                 </div>
                 <div className="reveal-late rounded-xl bg-surface-raised p-6 shadow-sm md:p-8">
                   <p className="text-text-secondary">{detail}</p>
                   <Link to={link.to} className={`mt-6 ${buttonClass('secondary', 'md')}`}>
                     {link.label}
-                    <ChevronIcon />
+                    <DirectionIcon shape="chevron" />
                   </Link>
                 </div>
               </li>
@@ -144,7 +147,7 @@ export default function HomePage() {
               <p className="mt-3 mb-8 text-text-secondary">{description}</p>
               <Link to={link.to} className={`mt-auto self-start ${buttonClass(link.variant)}`}>
                 {link.label}
-                <ArrowIcon />
+                <DirectionIcon shape="arrow" />
               </Link>
             </li>
           ))}
