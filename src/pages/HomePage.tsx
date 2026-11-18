@@ -102,7 +102,10 @@ const demoUrlDefanged = 'hxxps://evil[.]com';
 
 function VerdictDemo() {
   return (
-    <figure aria-labelledby="verdict-demo-caption" className="reveal rounded-xl bg-surface-sunken p-6 md:p-8">
+    <figure
+      aria-labelledby="verdict-demo-caption"
+      className="reveal flex aspect-square flex-col items-start justify-center rounded-xl bg-surface-sunken/60 p-6 md:p-8"
+    >
       <figcaption id="verdict-demo-caption" className="sr-only">
         範例：貼上網址後的判定結果
       </figcaption>
