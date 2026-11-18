@@ -52,14 +52,12 @@ describe('痛點與解法', () => {
     expect(painPoints).toEqual(['術語看不懂', '怕誤點', '怕隱私外洩']);
   });
 
-  it.each(['看判定方式', '認識警訊', '隱私與限制'])('「%s」連到來源與說明頁', async (linkName) => {
-    const user = userEvent.setup();
+  it('每個痛點只有文字說明，卡片裡沒有連結或按鈕', () => {
     renderHome();
     const section = screen.getByRole('region', { name: '常見的擔心' });
 
-    await user.click(within(section).getByRole('link', { name: linkName }));
-
-    expect(screen.getByRole('heading', { level: 1, name: '來源與說明' })).toBeInTheDocument();
+    expect(within(section).queryAllByRole('link')).toHaveLength(0);
+    expect(within(section).queryAllByRole('button')).toHaveLength(0);
   });
 });
 

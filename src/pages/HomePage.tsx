@@ -5,24 +5,24 @@ import { buttonClass } from '../styles';
 /** 連到站內某頁的按鈕 */
 type PageLink = { label: string; to: string };
 
-const painPoints: { problem: string; summary: string; detail: string; link: PageLink }[] = [
+const painPoints = [
   {
     problem: '術語看不懂',
-    summary: '白話說明，每個結果都附下一步',
-    detail: '我們只給三種判定結果：已知惡意、可疑、查無紀錄，並用日常說得懂的話說明原因，附上該怎麼做的建議。',
-    link: { label: '看判定方式', to: '/about' },
+    summary: '每個結果都是白話，還附下一步',
+    detail:
+      '不用懂什麼是釣魚網站或惡意程式。網址分析只會給出三種判定結果：已知惡意、可疑、查無紀錄，每種結果都用日常說得懂的話說明原因，並告訴你下一步該怎麼做。',
   },
   {
     problem: '怕誤點',
     summary: '先查再點',
-    detail: '收到連結不確定能不能點？把網址貼上來，我們會檢查它是否在惡意網址清單中，以及是否符合任何一項警訊。',
-    link: { label: '認識警訊', to: '/about' },
+    detail:
+      '收到簡訊或訊息裡的連結，先別急著點。把網址貼上來，我們會檢查它是否在惡意網址清單中，也會看它有沒有冒充銀行、使用短網址等可疑的警訊，再告訴你能不能點。',
   },
   {
     problem: '怕隱私外洩',
     summary: '輸入不會送出瀏覽器',
-    detail: '比對全部在你的瀏覽器內完成，你貼上的網址不會傳到任何伺服器。',
-    link: { label: '隱私與限制', to: '/about' },
+    detail:
+      '你貼上的網址只會在自己的瀏覽器裡比對，不會傳到任何伺服器，也不會被儲存。關掉頁面後，輸入的內容就消失了，不用擔心被別人看到。',
   },
 ];
 
@@ -77,18 +77,11 @@ function HomeSection({ title, hideTitle = false, tone = 'surface', children }: H
   );
 }
 
-/** 按鈕裡的方向圖示：arrow 用於行動區塊，chevron 用於說明卡片 */
-function DirectionIcon({ shape }: { shape: 'arrow' | 'chevron' }) {
+/** 行動區塊按鈕裡的箭頭圖示 */
+function ArrowIcon() {
   return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 16 16"
-      className="size-4.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-    >
-      <path d={shape === 'arrow' ? 'M2 8h12M9 3l5 5-5 5' : 'M6 3l5 5-5 5'} />
+    <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M2 8h12M9 3l5 5-5 5" />
     </svg>
   );
 }
@@ -152,20 +145,22 @@ export default function HomePage() {
 
       <HomeSection title="常見的擔心" hideTitle tone="navy">
         <ul className="flex flex-col gap-20 md:gap-32">
-          {painPoints.map(({ problem, summary, detail, link }, index) => {
+          {painPoints.map(({ problem, summary, detail }, index) => {
             const mirrored = index % 2 === 1;
             return (
-              <li key={problem} className="grid items-center gap-6 md:grid-cols-2 md:gap-16">
-                <div className={`reveal-stagger ${mirrored ? 'md:order-2 md:text-right' : ''}`}>
+              <li
+                key={problem}
+                className={`grid items-center gap-6 md:justify-center md:gap-10 ${
+                  mirrored ? 'md:grid-cols-[minmax(0,36rem)_minmax(0,20rem)]' : 'md:grid-cols-[minmax(0,20rem)_minmax(0,36rem)]'
+                }`}
+              >
+                {/* 文字靠向卡片：卡片在右時文字靠右，卡片在左時文字靠左 */}
+                <div className={`reveal-stagger ${mirrored ? 'md:order-2' : 'md:text-right'}`}>
                   <h3 className="text-3xl font-semibold md:text-4xl">{problem}</h3>
                   <p className="mt-3 text-lg">{summary}</p>
                 </div>
                 <div className="reveal-stagger-late rounded-xl bg-surface-raised p-6 md:p-8">
                   <p className="text-text-secondary">{detail}</p>
-                  <Link to={link.to} className={`mt-6 ${buttonClass('secondary', 'md')} font-semibold!`}>
-                    {link.label}
-                    <DirectionIcon shape="chevron" />
-                  </Link>
                 </div>
               </li>
             );
@@ -193,7 +188,7 @@ export default function HomePage() {
               <p className="mt-3 mb-8 text-text-secondary">{description}</p>
               <Link to={link.to} className={`mt-auto self-start ${buttonClass(link.variant)} font-semibold!`}>
                 {link.label}
-                <DirectionIcon shape="arrow" />
+                <ArrowIcon />
               </Link>
             </li>
           ))}
