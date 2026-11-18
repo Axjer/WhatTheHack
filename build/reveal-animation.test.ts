@@ -27,6 +27,12 @@ function enclosingAtRules(source: string, selector: RegExp): string[][] {
   return found;
 }
 
+/** 取出某個 CSS 屬性在所有宣告中的值（略過 @supports 條件裡的同名文字） */
+function declarationValues(source: string, property: string): string[] {
+  const pattern = new RegExp(String.raw`[{;]\s*${property}:\s*([^;{}]+);`, 'g');
+  return [...source.matchAll(pattern)].map(([, value]) => value.trim());
+}
+
 /** 取出 @keyframes <name> 的各個步驟：{ 步驟選擇器: 宣告內容 } */
 function keyframeSteps(source: string, name: string): Record<string, string> {
   const start = source.indexOf(`@keyframes ${name}`);
@@ -46,8 +52,8 @@ function keyframeSteps(source: string, name: string): Record<string, string> {
 }
 
 describe('區塊捲動動畫', () => {
-  it('區塊進入畫面時出現、離開畫面時消失', () => {
-    const steps = keyframeSteps(css, 'reveal');
+  it.each(['reveal', 'reveal-stagger'])('%s：進入畫面時出現、離開畫面時消失', (name) => {
+    const steps = keyframeSteps(css, name);
     const first = steps['from'] ?? steps['0%'];
     const last = steps['to'] ?? steps['100%'];
 
@@ -55,8 +61,11 @@ describe('區塊捲動動畫', () => {
     expect(last).toMatch(/opacity:\s*0\b/);
   });
 
-  it('上滑時內容在碰到視窗頂端前就完全消失（時間軸頂端內縮）', () => {
-    const timelines = [...css.matchAll(/[{;]\s*animation-timeline:\s*([^;{}]+);/g)].map(([, value]) => value.trim());
+  it('交錯排版上滑時，內容在碰到視窗頂端前就完全消失', () => {
+    const staggerRules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, selector]) => /\.reveal-stagger\b/.test(selector))
+      .map(([, , body]) => `;${body}`);
+    const timelines = staggerRules.flatMap((body) => declarationValues(body, 'animation-timeline'));
 
     expect(timelines.length).toBeGreaterThan(0);
     for (const timeline of timelines) {
@@ -67,7 +76,7 @@ describe('區塊捲動動畫', () => {
   });
 
   it('每條動畫範圍都延伸到離開畫面的階段', () => {
-    const ranges = [...css.matchAll(/animation-range:\s*([^;]+);/g)].map(([, range]) => range.trim());
+    const ranges = declarationValues(css, 'animation-range');
 
     expect(ranges.length).toBeGreaterThan(0);
     for (const range of ranges) {

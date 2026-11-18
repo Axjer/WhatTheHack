@@ -111,11 +111,11 @@ export default function HomePage() {
             const mirrored = index % 2 === 1;
             return (
               <li key={problem} className="grid items-center gap-6 md:grid-cols-2 md:gap-16">
-                <div className={`reveal ${mirrored ? 'md:order-2 md:text-right' : ''}`}>
+                <div className={`reveal-stagger ${mirrored ? 'md:order-2 md:text-right' : ''}`}>
                   <h3 className="text-3xl font-bold md:text-4xl">{problem}</h3>
                   <p className="mt-3 text-lg font-bold">{summary}</p>
                 </div>
-                <div className="reveal-late rounded-xl bg-surface-raised p-6 shadow-sm md:p-8">
+                <div className="reveal-stagger-late rounded-xl bg-surface-raised p-6 shadow-sm md:p-8">
                   <p className="text-text-secondary">{detail}</p>
                   <Link to={link.to} className={`mt-6 ${buttonClass('secondary', 'md')}`}>
                     {link.label}
