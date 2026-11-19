@@ -49,6 +49,8 @@ const actions: { title: string; description: string; link: PageLink }[] = [
 
 type HomeSectionProps = {
   title: string;
+  /** 上下留白：tight 用於相鄰的白底區塊，避免中間空一大片 */
+  spacing?: 'default' | 'tight';
   /** 標題只給輔助科技讀取，畫面上不顯示 */
   hideTitle?: boolean;
   /** surface：頁面冷白底；raised：白底；navy：滿版深海軍藍底、白字（交錯排版） */
@@ -63,11 +65,15 @@ const sectionToneClass = {
 };
 
 /** 主視覺之後的內容區塊：以 H2 命名；背景滿版，內容置中 */
-function HomeSection({ title, hideTitle = false, tone = 'surface', children }: HomeSectionProps) {
+function HomeSection({ title, hideTitle = false, spacing = 'default', tone = 'surface', children }: HomeSectionProps) {
   const titleId = useId();
   return (
     <section aria-labelledby={titleId} className={sectionToneClass[tone]}>
-      <div className="mx-auto w-full max-w-6xl px-4 py-20 md:px-6 md:py-32">
+      <div
+        className={`mx-auto w-full max-w-6xl px-4 md:px-6 ${
+          spacing === 'tight' ? 'py-14 md:py-20' : 'py-20 md:py-32'
+        }`}
+      >
         <h2 id={titleId} className={hideTitle ? 'sr-only' : 'reveal font-semibold'}>
           {title}
         </h2>
@@ -97,20 +103,23 @@ function VerdictDemo() {
   return (
     <figure
       aria-labelledby="verdict-demo-caption"
-      className="reveal flex flex-col gap-6 rounded-xl border border-text-primary/10 bg-surface-sunken p-6 shadow-sm md:p-8"
+      className="reveal flex flex-col gap-8 rounded-xl border border-text-primary/10 bg-surface-sunken p-6 shadow-sm md:p-10"
     >
       <figcaption id="verdict-demo-caption" className="sr-only">
         範例：貼上網址後的判定結果
       </figcaption>
-      <div className="grid rounded-lg bg-surface-raised px-4 py-3 font-mono text-lg md:text-xl">
-        {/* --chars：打字動畫的步數，等於網址字元數（等寬字一步一字） */}
-        <span
-          aria-hidden="true"
-          className="hero-demo-typed col-start-1 row-start-1 justify-self-start opacity-0"
-          style={{ '--chars': demoUrl.length } as CSSProperties}
-        >
+      {/* --chars：打字與游標動畫的步數，等於網址字元數（等寬字一步一字） */}
+      <div
+        className="grid rounded-lg bg-surface-raised px-5 py-4 font-mono text-xl md:text-2xl"
+        style={{ '--chars': demoUrl.length } as CSSProperties}
+      >
+        <span aria-hidden="true" className="hero-demo-typed col-start-1 row-start-1 justify-self-start opacity-0">
           {demoUrl}
         </span>
+        <span
+          aria-hidden="true"
+          className="hero-demo-caret col-start-1 row-start-1 h-[1.2em] w-0.5 self-center justify-self-start bg-text-primary opacity-0"
+        />
         <span className="hero-demo-defanged col-start-1 row-start-1">{demoUrlDefanged}</span>
       </div>
       <div className="hero-demo-verdict">
@@ -132,7 +141,7 @@ export default function HomePage() {
     <>
       <section
         aria-labelledby="hero-title"
-        className="mx-auto grid min-h-svh w-full max-w-6xl content-center items-center gap-12 px-4 py-16 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:px-6"
+        className="mx-auto grid min-h-[calc(100svh-4.5rem)] w-full max-w-6xl content-center items-center gap-12 px-4 py-16 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:px-6"
       >
         <h1 id="hero-title" className="reveal text-display">
           <span className="block font-bold">駭你好，先別點！</span>
@@ -144,17 +153,17 @@ export default function HomePage() {
       </section>
 
       <HomeSection title="常見的擔心" hideTitle tone="navy">
-        <ul className="flex flex-col gap-16 md:gap-10">
+        <ul className="flex flex-col gap-16 md:gap-16">
           {painPoints.map(({ problem, summary, detail }, index) => {
             const mirrored = index % 2 === 1;
             return (
               <li key={problem} className="grid items-center gap-8 md:grid-cols-2 md:gap-10">
                 {/* 卡片在右時文字靠左，卡片在左時文字靠右；一律貼著頁面邊緣 */}
                 <div className={`reveal-stagger ${mirrored ? 'md:order-2 md:text-right' : ''}`}>
-                  <h3 className="text-5xl font-normal md:text-6xl">{problem}</h3>
-                  <p className="mt-4 text-xl font-semibold">{summary}</p>
+                  <h3 className="text-5xl font-normal leading-tight md:text-6xl">{problem}</h3>
+                  <p className="mt-5 text-xl text-surface-raised/80">{summary}</p>
                 </div>
-                <div className="reveal-stagger-late flex rounded-xl border border-surface-raised/10 bg-navy-raised p-8 md:min-h-[26rem] md:items-center md:p-12">
+                <div className="reveal-stagger-late flex rounded-xl border border-surface-raised/10 bg-navy-raised p-8 md:min-h-[24rem] md:items-center md:p-12">
                   <p className="text-xl">{detail}</p>
                 </div>
               </li>
@@ -163,19 +172,19 @@ export default function HomePage() {
         </ul>
       </HomeSection>
 
-      <HomeSection title="平台數據" tone="raised">
+      <HomeSection title="平台數據" tone="raised" spacing="tight">
         <ul className="mt-12 grid gap-10 md:grid-cols-3 md:gap-12">
           {stats.map(({ value, label }, index) => (
             <li key={index} className="reveal rounded-xl bg-surface-sunken p-6 md:p-8">
               {/* 佔位期間用次要文字色，讀起來是「尚無資料」；換成真實數字時改回主要文字色 */}
-              <p className="text-7xl font-semibold tabular-nums text-text-secondary md:text-8xl">{value}</p>
+              <p className="text-5xl font-semibold tabular-nums text-text-secondary md:text-6xl">{value}</p>
               <p className="mt-4 text-text-secondary">{label}</p>
             </li>
           ))}
         </ul>
       </HomeSection>
 
-      <HomeSection title="收到可疑連結？" hideTitle tone="raised">
+      <HomeSection title="收到可疑連結？" hideTitle tone="raised" spacing="tight">
         <ul className="grid gap-6 md:grid-cols-2">
           {actions.map(({ title, description, link }) => (
             <li key={title} className="reveal flex flex-col rounded-xl bg-surface-sunken p-6 md:p-10">
