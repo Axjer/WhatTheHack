@@ -70,6 +70,9 @@ describe('頁尾', () => {
       'https://github.com/Axjer/WhatTheHack',
     );
     expect(within(footer).getByText(/僅供參考/)).toBeInTheDocument();
+    expect(within(footer).getByText(/「查無紀錄」不代表網址安全/)).toBeInTheDocument();
+    expect(within(footer).queryByText(/免責聲明/)).not.toBeInTheDocument();
+    expect(within(footer).queryByText(/如有疑慮/)).not.toBeInTheDocument();
   });
 
   it('點擊頁尾的 logo 回到首頁', async () => {

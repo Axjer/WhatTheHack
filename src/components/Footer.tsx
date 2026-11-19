@@ -21,7 +21,8 @@ export default function Footer() {
           駭你好
         </Link>
         <p className="col-span-2 row-start-2 text-sm leading-relaxed text-surface-raised/80 md:col-span-1 md:col-start-2 md:row-start-1">
-          免責聲明：本站的判定結果僅供參考，是依據公開的惡意網址清單與網址本身的可疑特徵比對而來。「查無紀錄」不代表網址安全，「可疑」與「已知惡意」也不保證完全準確。如有疑慮，請先向寄件人或 IT 人員確認，不要輸入個人資料或密碼。
+          <span className="block">本站的判定結果僅供參考，是依據公開的惡意網址清單與網址本身的可疑特徵比對而來。</span>
+          <span className="block">「查無紀錄」不代表網址安全，「可疑」與「已知惡意」也不保證完全準確。</span>
         </p>
         <a
           href={repoUrl}
