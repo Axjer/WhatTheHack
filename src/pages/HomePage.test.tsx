@@ -85,15 +85,24 @@ describe('行動按鈕', () => {
     expect(blocks).toEqual(['網址分析', '最新情資']);
   });
 
+  it('兩顆按鈕的文字都是「了解更多」，並各自附上只給螢幕閱讀器讀的目的地', () => {
+    renderHome();
+    const cta = screen.getByRole('region', { name: '收到可疑連結？' });
+    const links = within(cta).getAllByRole('link');
+
+    expect(links.map((link) => link.textContent)).toEqual(['了解更多網址分析', '了解更多最新情資']);
+    expect(within(cta).getAllByText('了解更多', { exact: false, ignore: '.sr-only' })).toHaveLength(2);
+  });
+
   it.each([
-    { button: '檢查網址', heading: '網址分析' },
-    { button: '了解情資', heading: '最新情資' },
-  ])('「$button」前往 $heading 頁', async ({ button, heading }) => {
+    { name: '了解更多網址分析', heading: '網址分析' },
+    { name: '了解更多最新情資', heading: '最新情資' },
+  ])('「$name」前往 $heading 頁', async ({ name, heading }) => {
     const user = userEvent.setup();
     renderHome();
     const cta = screen.getByRole('region', { name: '收到可疑連結？' });
 
-    await user.click(within(cta).getByRole('link', { name: button }));
+    await user.click(within(cta).getByRole('link', { name }));
 
     expect(screen.getByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
   });
