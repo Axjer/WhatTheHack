@@ -15,24 +15,23 @@ function GitHubMark() {
 export default function Footer() {
   return (
     <footer className="bg-navy text-surface-raised">
-      <div className="mx-auto max-w-6xl px-4 py-10 md:px-6 md:py-12">
-        <div className="flex items-center justify-between gap-4">
-          <Link to="/" className={`${navyItemClass} px-2 py-1 text-2xl font-bold`}>
-            駭你好
-          </Link>
-          <a
-            href={repoUrl}
-            aria-label="GitHub 專案原始碼"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`${navyItemClass} p-2`}
-          >
-            <GitHubMark />
-          </a>
-        </div>
-        <p className="mt-8 max-w-3xl border-t border-surface-raised/20 pt-6 text-sm leading-relaxed text-surface-raised/80">
+      {/* 手機：logo 與 GitHub 一排、免責聲明在下；桌面：三者同一排、垂直置中 */}
+      <div className="mx-auto grid max-w-6xl grid-cols-[1fr_auto] items-center gap-x-6 gap-y-3 px-4 py-5 md:grid-cols-[auto_1fr_auto] md:gap-x-10 md:px-6 md:py-4">
+        <Link to="/" className={`${navyItemClass} col-start-1 row-start-1 justify-self-start px-2 py-1 text-xl font-bold`}>
+          駭你好
+        </Link>
+        <p className="col-span-2 row-start-2 text-sm leading-relaxed text-surface-raised/80 md:col-span-1 md:col-start-2 md:row-start-1">
           免責聲明：本站的判定結果僅供參考，是依據公開的惡意網址清單與網址本身的可疑特徵比對而來。「查無紀錄」不代表網址安全，「可疑」與「已知惡意」也不保證完全準確。如有疑慮，請先向寄件人或 IT 人員確認，不要輸入個人資料或密碼。
         </p>
+        <a
+          href={repoUrl}
+          aria-label="GitHub 專案原始碼"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${navyItemClass} col-start-2 row-start-1 p-2 md:col-start-3`}
+        >
+          <GitHubMark />
+        </a>
       </div>
     </footer>
   );
