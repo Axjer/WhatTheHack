@@ -1,8 +1,26 @@
-import { useId, useState, type FormEvent } from 'react';
+import { useEffect, useId, useState, type FormEvent } from 'react';
 import { analyzeUrl, type AnalysisResult } from '../analysis/analyzeUrl';
 import AnalysisReport from '../components/AnalysisReport';
-import { maliciousUrls } from '../data/maliciousUrls';
-import { buttonClass } from '../styles';
+import { loadMaliciousList, type MaliciousList } from '../data/loadMaliciousList';
+import { buttonClass, disableableClass } from '../styles';
+
+/** 清單超過這個時間沒更新就提醒 */
+const STALE_AFTER_MS = 48 * 60 * 60 * 1000;
+
+/** 以台灣時間格式化為 YYYY-MM-DD HH:MM */
+function formatTaipeiTime(iso: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(iso));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}`;
+}
 
 /**
  * 網址分析頁：查詢卡 → 分析報告（簡述）→ 分析報告（詳細）。
@@ -11,15 +29,33 @@ import { buttonClass } from '../styles';
 export default function AnalyzePage() {
   const [input, setInput] = useState('');
   const [analysis, setAnalysis] = useState<{ result: AnalysisResult; at: number } | null>(null);
+  const [list, setList] = useState<MaliciousList | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const inputId = useId();
   const hintId = useId();
   const errorId = useId();
   const result = analysis?.result;
   const notUrl = result?.status === 'not-url';
 
+  useEffect(() => {
+    let active = true;
+    loadMaliciousList().then(
+      (loaded) => {
+        if (active) setList(loaded);
+      },
+      () => {
+        if (active) setLoadFailed(true);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setAnalysis({ result: analyzeUrl(input, maliciousUrls), at: Date.now() });
+    if (!list) return;
+    setAnalysis({ result: analyzeUrl(input, list.entries), at: Date.now() });
   }
 
   return (
@@ -48,7 +84,11 @@ export default function AnalyzePage() {
               aria-describedby={notUrl ? `${errorId} ${hintId}` : hintId}
               className="min-w-0 flex-1 rounded-lg border border-text-primary/20 bg-surface px-4 py-2.5 font-mono transition duration-200 placeholder:text-text-secondary hover:border-text-primary/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             />
-            <button type="submit" className={`${buttonClass('primary', 'md')} shrink-0 px-6`}>
+            <button
+              type="submit"
+              disabled={!list}
+              className={`${buttonClass('primary', 'md')} ${disableableClass} shrink-0 px-6`}
+            >
               查詢
             </button>
           </div>
@@ -56,6 +96,18 @@ export default function AnalyzePage() {
             只支援網址（<span className="font-mono">http://</span> 或 <span className="font-mono">https://</span>）・
             輸入內容只在你的瀏覽器內比對，不會送出或儲存
           </p>
+          {list && <p className="mt-1 text-sm text-text-secondary">清單更新於：{formatTaipeiTime(list.updatedAt)}</p>}
+          {/* 提醒用主要文字色與帶藍的淺色底：紅黃灰只留給判定結果 */}
+          {loadFailed && (
+            <p role="alert" className="mt-2 rounded-lg bg-surface-sunken px-3 py-2 text-sm">
+              無法載入惡意網址清單，請重新整理頁面再試一次。
+            </p>
+          )}
+          {list && Date.now() - Date.parse(list.updatedAt) > STALE_AFTER_MS && (
+            <p className="mt-2 rounded-lg bg-surface-sunken px-3 py-2 text-sm">
+              清單已超過 48 小時沒有更新，判定結果可能不夠新。
+            </p>
+          )}
 
           {/* 不是網址：只給提示、不給燈號；用主要文字色，紅黃灰只留給判定結果 */}
           <div aria-live="polite">

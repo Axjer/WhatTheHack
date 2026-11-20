@@ -303,7 +303,7 @@ export default function AnalysisReport({ result, now }: AnalysisReportProps) {
               </tbody>
             </table>
             <p className="mt-4 text-sm text-text-secondary">
-              比對在你的瀏覽器內完成，沒有送出任何網路請求。目前使用暫時的測試清單，之後會改為每日更新的惡意網址清單。
+              比對在你的瀏覽器內完成，你輸入的網址不會送出。惡意網址清單每天從 URLhaus 與 OpenPhish 更新。
             </p>
           </section>
         </div>

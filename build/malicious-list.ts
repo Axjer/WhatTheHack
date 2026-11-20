@@ -1,0 +1,135 @@
+import { normalizeUrl, type MaliciousEntry } from '../src/analysis/analyzeUrl.ts';
+import type { MaliciousList } from '../src/data/loadMaliciousList.ts';
+
+export type { MaliciousList };
+
+type BuildInput = {
+  /** URLhaus 的 CSV 原始文字；null 表示抓取失敗 */
+  urlhausCsv: string | null;
+  /** OpenPhish 免費版的純文字（每行一個網址）；null 表示抓取失敗 */
+  openphishText: string | null;
+  /** 上一份清單；抓取失敗時保留其中該來源的紀錄 */
+  previous: MaliciousList | null;
+  now: Date;
+};
+
+/**
+ * 每日資料整理模組：把兩個來源的原始文字合併、去重、正規化成惡意網址清單。
+ * 純函式，不連網；抓取與寫檔由 update-malicious-list.ts 負責。
+ */
+export function buildMaliciousList({ urlhausCsv, openphishText, previous, now }: BuildInput): MaliciousList | null {
+  const time = now.toISOString();
+  const parsed = [fromUrlhaus(urlhausCsv ?? '', time), fromOpenPhish(openphishText ?? '', time)];
+  // 抓不到或解析不出任何網址（例如拿到錯誤頁）都算失敗：不能讓這個來源變成空的
+  const fresh = parsed.flat();
+  if (!fresh.length) return previous;
+  const failedSources = new Set(parsed.filter((list) => !list.length).map((_, i) => (i === 0 ? 'URLhaus' : 'OpenPhish')));
+  const previousEntries = previous?.entries ?? [];
+  // 失敗的來源沿用上一份的紀錄
+  const kept = previousEntries.filter((entry) => failedSources.has(entry.source));
+  // 上一份清單中仍出現的網址一起去重，沿用較早的首次發現時間（OpenPhish 不提供時間）
+  const freshKeys = new Set(fresh.map(keyOf));
+  const carried = previousEntries.filter((entry) => freshKeys.has(keyOf(entry)));
+  const entries = dedupe([...fresh, ...kept, ...carried]);
+  entries.sort((a, b) => a.url.localeCompare(b.url) || a.source.localeCompare(b.source));
+  return { updatedAt: time, entries };
+}
+
+/** 同一來源的同一網址視為同一筆紀錄 */
+function keyOf(entry: MaliciousEntry): string {
+  return `${entry.source} ${entry.url}`;
+}
+
+/** 同一來源的同一網址只留一筆：首次發現取最早、最後發現取最晚 */
+function dedupe(entries: MaliciousEntry[]): MaliciousEntry[] {
+  const byKey = new Map<string, MaliciousEntry>();
+  for (const entry of entries) {
+    const key = keyOf(entry);
+    const seen = byKey.get(key);
+    byKey.set(
+      key,
+      seen
+        ? {
+            ...seen,
+            firstSeen: entry.firstSeen < seen.firstSeen ? entry.firstSeen : seen.firstSeen,
+            lastSeen: entry.lastSeen > seen.lastSeen ? entry.lastSeen : seen.lastSeen,
+          }
+        : entry,
+    );
+  }
+  return [...byKey.values()];
+}
+
+function fromOpenPhish(text: string, time: string): MaliciousEntry[] {
+  const entries: MaliciousEntry[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const url = normalizeUrl(line);
+    if (url) entries.push({ url, source: 'OpenPhish', threat: 'phishing', firstSeen: time, lastSeen: time });
+  }
+  return entries;
+}
+
+/** URLhaus CSV 的欄位（檔案開頭的 `# id,dateadded,...` 註解列會覆蓋這個預設順序） */
+const URLHAUS_COLUMNS = ['id', 'dateadded', 'url', 'url_status', 'last_online', 'threat', 'tags', 'urlhaus_link', 'reporter'];
+
+function fromUrlhaus(csv: string, time: string): MaliciousEntry[] {
+  let columns = URLHAUS_COLUMNS;
+  const entries: MaliciousEntry[] = [];
+  for (const line of csv.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    if (line.startsWith('#')) {
+      const header = line.slice(1).trim();
+      if (header.startsWith('id,')) columns = header.split(',');
+      continue;
+    }
+    const fields = parseCsvLine(line);
+    const row = Object.fromEntries(columns.map((column, i) => [column, fields[i] ?? '']));
+    // 只收目前仍在線上的網址：已下線的網址點了也不會中毒，且能讓清單保持精簡
+    if (row.url_status !== 'online') continue;
+    const url = normalizeUrl(row.url);
+    if (!url) continue;
+    entries.push({
+      url,
+      source: 'URLhaus',
+      threat: 'malware',
+      firstSeen: urlhausTime(row.dateadded) ?? time,
+      lastSeen: urlhausTime(row.last_online) ?? time,
+    });
+  }
+  return entries;
+}
+
+/** URLhaus 的時間是 UTC 的 `YYYY-MM-DD HH:MM:SS` */
+function urlhausTime(text: string): string | null {
+  const date = new Date(`${text.trim().replace(' ', 'T')}Z`);
+  return text.trim() && !Number.isNaN(date.getTime()) ? date.toISOString() : null;
+}
+
+/** 解析一列 CSV：欄位可用雙引號包住（內含逗號），`""` 代表一個雙引號 */
+function parseCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let field = '';
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (quoted) {
+      if (char === '"' && line[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      quoted = true;
+    } else if (char === ',') {
+      fields.push(field);
+      field = '';
+    } else {
+      field += char;
+    }
+  }
+  fields.push(field);
+  return fields;
+}
