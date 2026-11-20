@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { buildMaliciousList } from './malicious-list';
+import { buildMaliciousList } from './malicious-list.ts';
 
 const now = new Date('2026-11-20T00:00:00Z');
 
@@ -71,7 +71,7 @@ describe('buildMaliciousList', () => {
 
   it('OpenPhish 沒有提供時間：上一份清單已有的網址沿用原本的首次發現時間', () => {
     const previous = {
-      updatedAt: '2026-11-19T00:00:00.000Z',
+      sourceUpdatedAt: { URLhaus: null, OpenPhish: '2026-11-19T00:00:00.000Z' },
       entries: [
         {
           url: 'https://phish.example/login',
@@ -97,7 +97,7 @@ describe('buildMaliciousList', () => {
 
   describe('來源抓取失敗時不覆蓋為空清單', () => {
     const previous = {
-      updatedAt: '2026-11-19T00:00:00.000Z',
+      sourceUpdatedAt: { URLhaus: '2026-11-18T00:00:00.000Z', OpenPhish: '2026-11-19T00:00:00.000Z' },
       entries: [
         {
           url: 'http://old-malware.example/a.exe',
@@ -119,7 +119,7 @@ describe('buildMaliciousList', () => {
     it.each([
       ['抓不到（null）', null],
       ['內容解析不出任何網址（例如錯誤頁）', '<!DOCTYPE HTML><html><title>410 Gone</title></html>'],
-    ])('URLhaus %s → 保留上一份的 URLhaus 紀錄，OpenPhish 照常更新', (_, failedCsv) => {
+    ])('URLhaus %s → 保留上一份的 URLhaus 紀錄與更新時間，OpenPhish 照常更新', (_, failedCsv) => {
       const list = buildMaliciousList({
         urlhausCsv: failedCsv,
         openphishText: 'https://new-phish.example',
@@ -127,11 +127,27 @@ describe('buildMaliciousList', () => {
         now,
       });
 
-      expect(list?.updatedAt).toBe('2026-11-20T00:00:00.000Z');
+      expect(list?.sourceUpdatedAt).toEqual({ URLhaus: '2026-11-18T00:00:00.000Z', OpenPhish: '2026-11-20T00:00:00.000Z' });
       expect(list?.entries.map(({ url, source }) => `${source} ${url}`)).toEqual([
         'URLhaus http://old-malware.example/a.exe',
         'OpenPhish https://new-phish.example',
       ]);
+    });
+
+    it('只有 OpenPhish 失敗 → 保留上一份的 OpenPhish 紀錄與更新時間，URLhaus 照常更新', () => {
+      const csv = '"1","2026-11-19 00:00:00","http://new-malware.example/b.exe","online","","malware_download","","",""';
+      const list = buildMaliciousList({ urlhausCsv: csv, openphishText: null, previous, now });
+
+      expect(list?.sourceUpdatedAt).toEqual({ URLhaus: '2026-11-20T00:00:00.000Z', OpenPhish: '2026-11-19T00:00:00.000Z' });
+      expect(list?.entries.map(({ url, source }) => `${source} ${url}`)).toEqual([
+        'URLhaus http://new-malware.example/b.exe',
+        'OpenPhish https://old-phish.example',
+      ]);
+    });
+
+    it('沒有上一份清單時，失敗的來源沒有更新時間', () => {
+      const list = buildMaliciousList({ urlhausCsv: null, openphishText: 'https://new-phish.example', previous: null, now });
+      expect(list?.sourceUpdatedAt).toEqual({ URLhaus: null, OpenPhish: '2026-11-20T00:00:00.000Z' });
     });
 
     it('兩個來源都失敗 → 整份沿用上一份清單，更新時間不變', () => {
@@ -152,7 +168,7 @@ describe('buildMaliciousList', () => {
     });
 
     expect(list).toEqual({
-      updatedAt: '2026-11-20T00:00:00.000Z',
+      sourceUpdatedAt: { URLhaus: null, OpenPhish: '2026-11-20T00:00:00.000Z' },
       entries: [
         {
           url: 'http://bank-verify.example/a?b=1',

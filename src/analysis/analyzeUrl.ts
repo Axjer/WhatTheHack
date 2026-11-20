@@ -19,6 +19,13 @@ export type MaliciousEntry = {
   lastSeen: string;
 };
 
+/** 隨網站部署的惡意網址清單檔（每日由 build/update-malicious-list.ts 產生） */
+export type MaliciousList = {
+  /** 每個來源最近一次成功更新的時間（ISO 8601）；從未成功為 null */
+  sourceUpdatedAt: Record<ListSource, string | null>;
+  entries: MaliciousEntry[];
+};
+
 /** 判定結果（見 GLOSSARY.md） */
 export type Verdict = 'known-malicious' | 'suspicious' | 'no-record';
 

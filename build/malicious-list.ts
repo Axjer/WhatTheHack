@@ -1,7 +1,10 @@
-import { normalizeUrl, type MaliciousEntry } from '../src/analysis/analyzeUrl.ts';
-import type { MaliciousList } from '../src/data/loadMaliciousList.ts';
-
-export type { MaliciousList };
+import {
+  listSources,
+  normalizeUrl,
+  type ListSource,
+  type MaliciousEntry,
+  type MaliciousList,
+} from '../src/analysis/analyzeUrl.ts';
 
 type BuildInput = {
   /** URLhaus 的 CSV 原始文字；null 表示抓取失敗 */
@@ -19,20 +22,35 @@ type BuildInput = {
  */
 export function buildMaliciousList({ urlhausCsv, openphishText, previous, now }: BuildInput): MaliciousList | null {
   const time = now.toISOString();
-  const parsed = [fromUrlhaus(urlhausCsv ?? '', time), fromOpenPhish(openphishText ?? '', time)];
+  const freshBySource: Record<ListSource, MaliciousEntry[]> = {
+    URLhaus: fromUrlhaus(urlhausCsv ?? '', time),
+    OpenPhish: fromOpenPhish(openphishText ?? '', time),
+  };
   // 抓不到或解析不出任何網址（例如拿到錯誤頁）都算失敗：不能讓這個來源變成空的
-  const fresh = parsed.flat();
-  if (!fresh.length) return previous;
-  const failedSources = new Set(parsed.filter((list) => !list.length).map((_, i) => (i === 0 ? 'URLhaus' : 'OpenPhish')));
+  const succeeded = listSources.filter((source) => freshBySource[source].length > 0);
+  if (!succeeded.length) return previous;
+
   const previousEntries = previous?.entries ?? [];
-  // 失敗的來源沿用上一份的紀錄
-  const kept = previousEntries.filter((entry) => failedSources.has(entry.source));
-  // 上一份清單中仍出現的網址一起去重，沿用較早的首次發現時間（OpenPhish 不提供時間）
-  const freshKeys = new Set(fresh.map(keyOf));
-  const carried = previousEntries.filter((entry) => freshKeys.has(keyOf(entry)));
-  const entries = dedupe([...fresh, ...kept, ...carried]);
-  entries.sort((a, b) => a.url.localeCompare(b.url) || a.source.localeCompare(b.source));
-  return { updatedAt: time, entries };
+  const entries: MaliciousEntry[] = [];
+  const sourceUpdatedAt = {} as MaliciousList['sourceUpdatedAt'];
+  for (const source of listSources) {
+    const fresh = freshBySource[source];
+    const previousOfSource = previousEntries.filter((entry) => entry.source === source);
+    if (fresh.length) {
+      // 上一份清單中仍出現的網址一起去重，沿用較早的首次發現時間（OpenPhish 不提供時間）
+      const freshKeys = new Set(fresh.map(keyOf));
+      entries.push(...fresh, ...previousOfSource.filter((entry) => freshKeys.has(keyOf(entry))));
+      sourceUpdatedAt[source] = time;
+    } else {
+      // 失敗的來源沿用上一份的紀錄與更新時間
+      entries.push(...previousOfSource);
+      sourceUpdatedAt[source] = previous?.sourceUpdatedAt[source] ?? null;
+    }
+  }
+
+  const merged = dedupe(entries);
+  merged.sort((a, b) => a.url.localeCompare(b.url) || a.source.localeCompare(b.source));
+  return { sourceUpdatedAt, entries: merged };
 }
 
 /** 同一來源的同一網址視為同一筆紀錄 */

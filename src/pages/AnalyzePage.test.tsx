@@ -2,17 +2,19 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MaliciousList } from '../data/loadMaliciousList';
+import type { MaliciousList } from '../analysis/analyzeUrl';
 import AnalyzePage from './AnalyzePage';
 
 const HOUR = 60 * 60 * 1000;
+const hoursAgo = (hours: number) => new Date(Date.now() - hours * HOUR).toISOString();
 
 /** 假的惡意網址清單（取代每日更新的清單檔） */
 let fakeList: MaliciousList;
 
-function listUpdatedAt(updatedAt: string): MaliciousList {
+/** 假清單；兩個來源各自的更新時間（null 表示從未成功更新） */
+function listUpdatedAt(urlhaus: string | null, openphish: string | null = urlhaus): MaliciousList {
   return {
-    updatedAt,
+    sourceUpdatedAt: { URLhaus: urlhaus, OpenPhish: openphish },
     entries: [
       {
         url: 'https://evil-login.example/pay',
@@ -48,8 +50,8 @@ vi.mock('../data/loadMaliciousList', () => ({
 
 beforeEach(() => {
   loadFails = false;
-  // 預設是剛更新過的清單
-  fakeList = listUpdatedAt(new Date(Date.now() - HOUR).toISOString());
+  // 預設是兩個來源都剛更新過的清單
+  fakeList = listUpdatedAt(hoursAgo(1));
 });
 
 /** 渲染網址分析頁，並等清單載入完成 */
@@ -81,16 +83,22 @@ afterEach(() => {
 });
 
 describe('惡意網址清單的更新時間', () => {
-  it('以台灣時間顯示「清單更新於：YYYY-MM-DD HH:MM」', async () => {
-    fakeList = listUpdatedAt('2026-11-13T00:00:00.000Z');
+  it('以台灣時間顯示「清單更新於：YYYY-MM-DD HH:MM」，取最舊的來源', async () => {
+    fakeList = listUpdatedAt('2026-11-13T00:00:00.000Z', '2026-11-19T00:00:00.000Z');
     await setup();
     expect(screen.getByText('清單更新於：2026-11-13 08:00')).toBeInTheDocument();
   });
 
-  it('超過 48 小時沒更新 → 提醒結果可能不夠新', async () => {
-    fakeList = listUpdatedAt(new Date(Date.now() - 49 * HOUR).toISOString());
+  it('某個來源超過 48 小時沒更新 → 指出是哪個來源，提醒結果可能不夠新', async () => {
+    fakeList = listUpdatedAt(hoursAgo(49), hoursAgo(1));
     await setup();
-    expect(screen.getByText(/清單已超過 48 小時沒有更新/)).toBeInTheDocument();
+    expect(screen.getByText('URLhaus 已超過 48 小時沒有更新，判定結果可能不夠新。')).toBeInTheDocument();
+  });
+
+  it('某個來源從未成功更新 → 同樣提醒', async () => {
+    fakeList = listUpdatedAt(null, hoursAgo(1));
+    await setup();
+    expect(screen.getByText('URLhaus 已超過 48 小時沒有更新，判定結果可能不夠新。')).toBeInTheDocument();
   });
 
   it('清單載入失敗 → 說明原因，且不能查詢', async () => {
@@ -105,10 +113,10 @@ describe('惡意網址清單的更新時間', () => {
     expect(screen.getByRole('button', { name: '查詢' })).toBeDisabled();
   });
 
-  it('48 小時內更新過 → 不顯示提醒', async () => {
-    fakeList = listUpdatedAt(new Date(Date.now() - 47 * HOUR).toISOString());
+  it('兩個來源都在 48 小時內更新過 → 不顯示提醒', async () => {
+    fakeList = listUpdatedAt(hoursAgo(47));
     await setup();
-    expect(screen.queryByText(/清單已超過 48 小時沒有更新/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/已超過 48 小時沒有更新/)).not.toBeInTheDocument();
   });
 });
 
@@ -194,7 +202,7 @@ describe('網址分析頁', () => {
 
   it('已知惡意且符合警訊：仍是已知惡意，詳細報告說明符合的警訊', async () => {
     const { user, analyze } = await setup();
-    // 暫時清單中的網址加上「someone@」：仍連到同一個網址，但符合「網址中含 @」
+    // 假清單中的網址加上「someone@」：仍連到同一個網址，但符合「網址中含 @」
     await analyze('https://someone@evil-login.example/pay');
 
     expect(verdictHeading()).toHaveTextContent('已知惡意');

@@ -9,7 +9,8 @@
  * 任何來源失敗都不會讓這個腳本失敗：失敗的來源沿用上一份清單，網站照常部署。
  */
 import { readFile, writeFile } from 'node:fs/promises';
-import { buildMaliciousList, type MaliciousList } from './malicious-list.ts';
+import { listSources, type MaliciousList } from '../src/analysis/analyzeUrl.ts';
+import { buildMaliciousList } from './malicious-list.ts';
 
 const OUTPUT = new URL('../public/data/malicious-urls.json', import.meta.url);
 const OPENPHISH_URL = 'https://openphish.com/feed.txt';
@@ -47,7 +48,8 @@ function isMaliciousList(value: unknown): value is MaliciousList {
   return (
     typeof value === 'object' &&
     value !== null &&
-    typeof (value as MaliciousList).updatedAt === 'string' &&
+    typeof (value as MaliciousList).sourceUpdatedAt === 'object' &&
+    (value as MaliciousList).sourceUpdatedAt !== null &&
     Array.isArray((value as MaliciousList).entries)
   );
 }
@@ -75,8 +77,9 @@ if (!list) {
   console.warn('兩個來源都失敗，也沒有上一份清單：保留現有檔案，不覆蓋');
 } else {
   await writeFile(OUTPUT, `${JSON.stringify(list)}\n`);
-  const count = (source: string) => list.entries.filter((entry) => entry.source === source).length;
-  console.log(
-    `惡意網址清單：共 ${list.entries.length} 筆（URLhaus ${count('URLhaus')}、OpenPhish ${count('OpenPhish')}），更新於 ${list.updatedAt}`,
-  );
+  console.log(`惡意網址清單：共 ${list.entries.length} 筆`);
+  for (const source of listSources) {
+    const count = list.entries.filter((entry) => entry.source === source).length;
+    console.log(`- ${source}：${count} 筆，更新於 ${list.sourceUpdatedAt[source] ?? '（從未成功更新）'}`);
+  }
 }
