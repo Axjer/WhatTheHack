@@ -169,7 +169,7 @@ describe('共用平台只比對完整網址', () => {
 });
 
 describe('警訊', () => {
-  const kindsOf = (input: string) => analyzed(input).warningSigns.map((sign) => sign.kind);
+  const kindsOf = (input: string) => analyzed(input).warningSigns;
 
   it.each([
     ['IPv4', 'http://192.168.0.1/admin'],
@@ -190,38 +190,12 @@ describe('警訊', () => {
     expect(kindsOf('https://notbit.ly.example/a')).toEqual([]);
   });
 
-  it.each(['https://xn--80ak6aa92e.com', 'https://台灣.tw', 'https://xn--pple-43d.example/login'])(
-    'Punycode 網域：%s',
+  it.each(['https://shopee-tw.vip/order', 'https://xn--80ak6aa92e.com', 'https://台灣.tw'])(
+    '只檢查三項警訊：網域含品牌名稱或 Punycode 不算（%s）',
     (input) => {
-      expect(kindsOf(input)).toEqual(['punycode']);
+      expect(analyzed(input)).toMatchObject({ verdict: 'no-record', warningSigns: [] });
     },
   );
-
-  it('路徑含 xn-- 不算 Punycode 網域', () => {
-    expect(kindsOf('https://example.org/xn--abc')).toEqual([]);
-  });
-
-  it.each([
-    ['https://shopee-tw.vip/order', '蝦皮'],
-    ['http://line-login.example/verify', 'LINE'],
-    ['https://ctbc.secure-login.example', '中國信託'],
-    ['https://mof-gov.top/refund', '政府機關'],
-    ['https://twpost-delivery.example', '中華郵政'],
-  ])('仿冒台灣常見品牌：%s → %s', (input, brand) => {
-    expect(analyzed(input).warningSigns).toEqual([{ kind: 'brand-lookalike', brand }]);
-  });
-
-  it.each([
-    'https://shopee.tw/product/1',
-    'https://www.ctbcbank.com/twrbo/zh_tw/index.html',
-    'https://line.me/R/ti/p/@abc',
-    'https://www.mof.gov.tw',
-    'https://www.gov.uk',
-    'https://online-shop.example',
-    'https://pipeline.example',
-  ])('官方網域或只是字面相近，不算仿冒：%s', (input) => {
-    expect(kindsOf(input)).toEqual([]);
-  });
 
   it('網址中含 @（@ 前面是障眼法）', () => {
     expect(kindsOf('http://bank.example@evil.example/login')).toEqual(['at-sign']);
@@ -237,7 +211,7 @@ describe('警訊', () => {
     expect(analyzed('https://drive.google.com@drive.google.com/file/d/bad-file/view')).toMatchObject({
       verdict: 'known-malicious',
       match: 'full-url',
-      warningSigns: [{ kind: 'at-sign' }],
+      warningSigns: ['at-sign'],
     });
   });
 
@@ -268,7 +242,7 @@ describe('判定順序：惡意網址清單 → 警訊 → 查無紀錄', () => 
     const result = analyzeUrl('http://192.168.0.1/admin', list);
     expect(result).toMatchObject({
       verdict: 'known-malicious',
-      warningSigns: [{ kind: 'ip-address' }],
+      warningSigns: ['ip-address'],
     });
   });
 

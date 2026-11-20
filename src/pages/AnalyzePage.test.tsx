@@ -102,12 +102,12 @@ describe('網址分析頁', () => {
 
   it('可疑：燈號（圖示＋文字）並以白話說明符合的警訊', async () => {
     const { analyze } = setup();
-    await analyze('https://shopee-tw.vip/order');
+    await analyze('https://bit.ly/3abcDEF');
 
     expect(verdictHeading()).toHaveTextContent('⚠️可疑');
     const card = verdictCard();
     expect(within(card).getByText(/不在惡意網址清單中，但有可疑的地方/)).toBeInTheDocument();
-    expect(within(card).getByText('網域裡有「蝦皮」的名稱，但不是蝦皮的官方網域，可能是冒充。')).toBeInTheDocument();
+    expect(within(card).getByText('這是短網址，看不出點開後真正會連到哪裡。')).toBeInTheDocument();
   });
 
   it('已知惡意且符合警訊：仍是已知惡意，詳細報告說明符合的警訊', async () => {

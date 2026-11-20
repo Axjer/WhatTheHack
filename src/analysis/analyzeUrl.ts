@@ -1,4 +1,3 @@
-import { brands } from './brands';
 import { sharedPlatforms } from './sharedPlatforms';
 import { urlShorteners } from './urlShorteners';
 
@@ -22,14 +21,8 @@ export type MaliciousEntry = {
 /** 判定結果（見 GLOSSARY.md） */
 export type Verdict = 'known-malicious' | 'suspicious' | 'no-record';
 
-/** 五項警訊；陣列順序即檢查與顯示順序 */
-export const warningSignKinds = ['ip-address', 'url-shortener', 'punycode', 'brand-lookalike', 'at-sign'] as const;
-export type WarningSignKind = (typeof warningSignKinds)[number];
-
-/** 網址符合的一項警訊；仿冒品牌時附上被仿冒的品牌名稱 */
-export type WarningSign =
-  | { kind: Exclude<WarningSignKind, 'brand-lookalike'> }
-  | { kind: 'brand-lookalike'; brand: string };
+/** 三項警訊（見 GLOSSARY.md）：直接使用 IP 位址、短網址服務、網址中含 @ */
+export type WarningSign = 'ip-address' | 'url-shortener' | 'at-sign';
 
 /** 在惡意網址清單中相符的方式；null 表示不在清單中 */
 export type ListMatch = 'full-url' | 'domain' | null;
@@ -54,7 +47,7 @@ export type UrlAnalysis = {
   sources: SourceResult[];
   /** 命中紀錄標記的威脅類型，依 threats 的順序 */
   threats: Threat[];
-  /** 符合的警訊，依 warningSignKinds 的順序；已知惡意時也會列出 */
+  /** 符合的警訊，依 IP 位址、短網址、@ 的順序；已知惡意時也會列出 */
   warningSigns: WarningSign[];
   firstSeen: string | null;
   lastSeen: string | null;
@@ -105,26 +98,11 @@ export function analyzeUrl(input: string, maliciousList: readonly MaliciousEntry
 
 function warningSignsOf(url: ParsedUrl, shortener: boolean): WarningSign[] {
   const signs: WarningSign[] = [];
-  const isIp = url.hostname.startsWith('[') || isIpv4(url.hostname);
-  if (isIp) signs.push({ kind: 'ip-address' });
-  if (shortener) signs.push({ kind: 'url-shortener' });
-  if (url.hostname.split('.').some((label) => label.startsWith('xn--'))) signs.push({ kind: 'punycode' });
-  const brand = isIp ? undefined : impersonatedBrand(url.hostname);
-  if (brand) signs.push({ kind: 'brand-lookalike', brand });
+  if (isIpHost(url.hostname)) signs.push('ip-address');
+  if (shortener) signs.push('url-shortener');
   // 只看網域前的 @（user@host）：瀏覽器會忽略 @ 前面的文字，路徑裡的 @ 不影響連到哪裡
-  if (url.hasUserinfo) signs.push({ kind: 'at-sign' });
+  if (url.hasUserinfo) signs.push('at-sign');
   return signs;
-}
-
-/** 網域含有品牌關鍵字，卻不是該品牌的官方網域 → 回傳品牌名稱 */
-function impersonatedBrand(hostname: string): string | undefined {
-  const segments = hostname.split(/[.-]/);
-  return brands.find(
-    ({ keywords, officialDomains, officialPattern }) =>
-      keywords.some((keyword) => (keyword.length >= 5 ? hostname.includes(keyword) : segments.includes(keyword))) &&
-      !isUnder(hostname, officialDomains) &&
-      !officialPattern?.test(hostname),
-  )?.name;
 }
 
 function earliest(times: string[]): string | null {
@@ -206,10 +184,15 @@ function isValidRawHost(rawHost: string): boolean {
 
 /** 解析後的主機名稱：IPv4、IPv6，或至少兩段、最後一段是字母（或 Punycode）的網域 */
 function isValidHostname(hostname: string): boolean {
-  if (hostname.startsWith('[') || isIpv4(hostname)) return true;
+  if (isIpHost(hostname)) return true;
   const labels = hostname.split('.');
   if (labels.length < 2 || labels.some((label) => !/^[a-z0-9-]+$/.test(label))) return false;
   return /^([a-z]{2,}|xn--[a-z0-9-]+)$/.test(labels[labels.length - 1]);
+}
+
+/** 解析後的主機名稱是 IP 位址（IPv4，或以 [ 開頭的 IPv6） */
+function isIpHost(hostname: string): boolean {
+  return hostname.startsWith('[') || isIpv4(hostname);
 }
 
 function isIpv4(text: string): boolean {

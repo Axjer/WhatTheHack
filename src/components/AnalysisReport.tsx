@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import type { Threat, UrlAnalysis, Verdict, WarningSign, WarningSignKind } from '../analysis/analyzeUrl';
+import type { Threat, UrlAnalysis, Verdict, WarningSign } from '../analysis/analyzeUrl';
 import { interactiveClass } from '../styles';
 
 /** 查無紀錄的固定文案（CLAUDE.md），完整呈現、不拆開 */
@@ -44,20 +44,26 @@ const threatLabel: Record<Threat, string> = { phishing: '釣魚', malware: '惡�
 const threatPhrase: Record<Threat, string> = { phishing: '騙取帳號密碼', malware: '散布惡意程式' };
 
 /** 符合的警訊的白話說明；host 為 defang 後的網域 */
-const warningSignText: Record<WarningSignKind, (sign: WarningSign, host: string) => ReactNode> = {
+const warningSignText: Record<WarningSign, (host: string) => ReactNode> = {
   'ip-address': () => '這個網址直接使用 IP 位址（一串數字），而不是網站名稱，正常網站很少這樣做。',
   'url-shortener': () => '這是短網址，看不出點開後真正會連到哪裡。',
-  punycode: () => '網域含有特殊字元，可能用長得很像的字冒充知名網站。',
-  'brand-lookalike': (sign) => {
-    const brand = sign.kind === 'brand-lookalike' ? sign.brand : '';
-    return `網域裡有「${brand}」的名稱，但不是${brand}的官方網域，可能是冒充。`;
-  },
-  'at-sign': (_, host) => (
+  'at-sign': (host) => (
     <>
       網址中有「@」，瀏覽器會忽略 @ 前面的文字，實際連到的是 <span className="font-mono break-all">{host}</span>。
     </>
   ),
 };
+
+/** 符合的警訊，每項一句白話說明；文字色沿用外層（黃底上是深色字） */
+function WarningSignList({ result, className = '' }: { result: UrlAnalysis; className?: string }) {
+  return (
+    <ul className={`flex list-disc flex-col gap-1 pl-6 marker:text-text-secondary ${className}`}>
+      {result.warningSigns.map((sign) => (
+        <li key={sign}>{warningSignText[sign](result.parts.host)}</li>
+      ))}
+    </ul>
+  );
+}
 
 /** 白話判斷：判定結果相關文案一律嚴肅、直接 */
 function judgmentOf(result: UrlAnalysis): string {
@@ -158,13 +164,7 @@ export default function AnalysisReport({ result, now }: AnalysisReportProps) {
               {light.label}
             </h2>
             <p className={`mt-2 font-medium ${light.textClass}`}>{judgmentOf(result)}</p>
-            {result.verdict === 'suspicious' && (
-              <ul className="mt-2 flex list-disc flex-col gap-1 pl-6 marker:text-text-secondary">
-                {result.warningSigns.map((sign) => (
-                  <li key={sign.kind}>{warningSignText[sign.kind](sign, result.parts.host)}</li>
-                ))}
-              </ul>
-            )}
+            {result.verdict === 'suspicious' && <WarningSignList result={result} className="mt-2" />}
           </div>
           <p className="rounded-lg border border-text-primary/10 bg-surface-raised px-4 py-2.5 font-mono break-all">
             <span className="sr-only">分析的網址：</span>
@@ -238,11 +238,7 @@ export default function AnalysisReport({ result, now }: AnalysisReportProps) {
               )}
               {/* 警訊在分析時自動檢查，只說明符合的項目；「可疑」已在判定卡上說明，這裡只補已知惡意的情況 */}
               {result.verdict === 'known-malicious' && result.warningSigns.length > 0 && (
-                <ul className="mt-3 flex list-disc flex-col gap-1 pl-6 text-text-secondary marker:text-text-secondary">
-                  {result.warningSigns.map((sign) => (
-                    <li key={sign.kind}>{warningSignText[sign.kind](sign, result.parts.host)}</li>
-                  ))}
-                </ul>
+                <WarningSignList result={result} className="mt-3 text-text-secondary" />
               )}
             </section>
 
