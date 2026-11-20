@@ -211,6 +211,41 @@ describe('buildMaliciousList', () => {
     });
   });
 
+  describe('大量資料時不會爆堆疊', () => {
+    // 展開運算子塞進 push() 的參數列表，資料量大時會超過引擎的參數數量上限
+    // 實際在 GitHub Actions 上，9 萬多筆就撞到了（呼叫堆疊深度不同，門檻會變動），這裡刻意抓大一點確保能重現
+    const LARGE = 500_000;
+
+    function hugeUrlhausCsv(count: number): string {
+      const rows = Array.from(
+        { length: count },
+        (_, i) => `"${i}","2026-11-19 00:00:00","http://host${i}.example/a","online","2026-11-19 00:00:00","malware_download","","",""`,
+      );
+      return rows.join('\n');
+    }
+
+    it('來源成功、資料量很大時也能正常合併', () => {
+      const list = buildMaliciousList({ urlhausCsv: hugeUrlhausCsv(LARGE), openphishText: null, previous: null, now });
+      expect(list?.entries).toHaveLength(LARGE);
+    }, 20_000);
+
+    it('來源抓取失敗、沿用的上一份紀錄資料量很大時也能正常合併', () => {
+      const previous = {
+        sourceUpdatedAt: { URLhaus: '2026-11-19T00:00:00.000Z', OpenPhish: null },
+        entries: Array.from({ length: LARGE }, (_, i) => ({
+          url: `http://host${i}.example/a`,
+          source: 'URLhaus' as const,
+          threat: 'malware' as const,
+          firstSeen: '2026-11-19T00:00:00.000Z',
+          lastSeen: '2026-11-19T00:00:00.000Z',
+        })),
+      };
+      expect(() =>
+        buildMaliciousList({ urlhausCsv: null, openphishText: 'https://new-phish.example', previous, now }),
+      ).not.toThrow();
+    });
+  });
+
   it('OpenPhish：每行一個網址，正規化後成為釣魚紀錄，發現時間為這次更新', () => {
     const list = buildMaliciousList({
       urlhausCsv: null,
