@@ -52,11 +52,12 @@ export function buildMaliciousList({ urlhausCsv, openphishText, previous, now }:
           // 掉出今天的 feed，但還在保留期內：原本的發現時間不變
           now.getTime() - Date.parse(entry.lastSeen) <= retentionMs,
       );
-      entries.push(...fresh, ...carried);
+      pushAll(entries, fresh);
+      pushAll(entries, carried);
       sourceUpdatedAt[source] = time;
     } else {
       // 失敗的來源沿用上一份的紀錄與更新時間
-      entries.push(...previousOfSource);
+      pushAll(entries, previousOfSource);
       sourceUpdatedAt[source] = previous?.sourceUpdatedAt[source] ?? null;
     }
   }
@@ -64,6 +65,15 @@ export function buildMaliciousList({ urlhausCsv, openphishText, previous, now }:
   const merged = dedupe(entries);
   merged.sort((a, b) => a.url.localeCompare(b.url) || a.source.localeCompare(b.source));
   return { sourceUpdatedAt, entries: merged };
+}
+
+/**
+ * 逐筆加入陣列，取代 `target.push(...source)`：來源數量很大時（URLhaus 動輒十萬筆），
+ * 展開運算子會把整個陣列當成呼叫參數，超過引擎對參數數量的上限而丟出
+ * RangeError: Maximum call stack size exceeded。
+ */
+function pushAll<T>(target: T[], source: readonly T[]): void {
+  for (const item of source) target.push(item);
 }
 
 /** 同一來源的同一網址視為同一筆紀錄 */
