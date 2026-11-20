@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import type { Threat, UrlAnalysis, Verdict } from '../analysis/analyzeUrl';
+import type { Threat, UrlAnalysis, Verdict, WarningSign, WarningSignKind } from '../analysis/analyzeUrl';
 import { interactiveClass } from '../styles';
 
 /** 查無紀錄的固定文案（CLAUDE.md），完整呈現、不拆開 */
@@ -19,6 +19,15 @@ const verdictLight: Record<
     chipClass: 'border-danger/40 text-danger',
     iconClass: '',
   },
+  suspicious: {
+    icon: '⚠️',
+    label: '可疑',
+    cardClass: 'bg-warning-bg border border-warning',
+    // 黃底上一律用深色字
+    textClass: 'text-text-primary',
+    chipClass: 'border-warning text-text-primary',
+    iconClass: '',
+  },
   'no-record': {
     icon: '❔',
     label: '查無紀錄',
@@ -34,9 +43,26 @@ const verdictLight: Record<
 const threatLabel: Record<Threat, string> = { phishing: '釣魚', malware: '惡意程式下載' };
 const threatPhrase: Record<Threat, string> = { phishing: '騙取帳號密碼', malware: '散布惡意程式' };
 
+/** 符合的警訊的白話說明；host 為 defang 後的網域 */
+const warningSignText: Record<WarningSignKind, (sign: WarningSign, host: string) => ReactNode> = {
+  'ip-address': () => '這個網址直接使用 IP 位址（一串數字），而不是網站名稱，正常網站很少這樣做。',
+  'url-shortener': () => '這是短網址，看不出點開後真正會連到哪裡。',
+  punycode: () => '網域含有特殊字元，可能用長得很像的字冒充知名網站。',
+  'brand-lookalike': (sign) => {
+    const brand = sign.kind === 'brand-lookalike' ? sign.brand : '';
+    return `網域裡有「${brand}」的名稱，但不是${brand}的官方網域，可能是冒充。`;
+  },
+  'at-sign': (_, host) => (
+    <>
+      網址中有「@」，瀏覽器會忽略 @ 前面的文字，實際連到的是 <span className="font-mono break-all">{host}</span>。
+    </>
+  ),
+};
+
 /** 白話判斷：判定結果相關文案一律嚴肅、直接 */
 function judgmentOf(result: UrlAnalysis): string {
   if (result.verdict === 'no-record') return noRecordText;
+  if (result.verdict === 'suspicious') return '這個網址不在惡意網址清單中，但有可疑的地方，點開前請先確認：';
   const subject = result.match === 'domain' ? '這個網址所在的網域' : '這個網址';
   const purpose = result.threats.map((threat) => threatPhrase[threat]).join('、');
   return `${subject}曾被通報用來${purpose}，請不要點擊。`;
@@ -44,6 +70,11 @@ function judgmentOf(result: UrlAnalysis): string {
 
 const actionSteps: Record<Verdict, string[]> = {
   'known-malicious': ['不要點擊或轉傳', '回報 IT 或資安窗口', '若已點擊，立即更改密碼'],
+  suspicious: [
+    '先不要點擊，也不要在連結開啟的頁面輸入帳號密碼',
+    '用電話或官方 App 向寄件人或該單位確認',
+    '不確定時，交給 IT 或資安窗口判斷',
+  ],
   'no-record': [
     '先用電話或其他管道向寄件人確認，不要直接回覆原訊息',
     '不確定時，交給 IT 或資安窗口判斷',
@@ -127,6 +158,13 @@ export default function AnalysisReport({ result, now }: AnalysisReportProps) {
               {light.label}
             </h2>
             <p className={`mt-2 font-medium ${light.textClass}`}>{judgmentOf(result)}</p>
+            {result.verdict === 'suspicious' && (
+              <ul className="mt-2 flex list-disc flex-col gap-1 pl-6 marker:text-text-secondary">
+                {result.warningSigns.map((sign) => (
+                  <li key={sign.kind}>{warningSignText[sign.kind](sign, result.parts.host)}</li>
+                ))}
+              </ul>
+            )}
           </div>
           <p className="rounded-lg border border-text-primary/10 bg-surface-raised px-4 py-2.5 font-mono break-all">
             <span className="sr-only">分析的網址：</span>
@@ -196,6 +234,14 @@ export default function AnalysisReport({ result, now }: AnalysisReportProps) {
                 <ul className="mt-3 flex flex-wrap gap-2">
                   {result.domainReported && <li className={hitChipClass}>網域已被通報</li>}
                   {result.sharedPlatform && <li className={neutralChipClass}>共用平台：只比對完整網址</li>}
+                </ul>
+              )}
+              {/* 警訊在分析時自動檢查，只說明符合的項目；「可疑」已在判定卡上說明，這裡只補已知惡意的情況 */}
+              {result.verdict === 'known-malicious' && result.warningSigns.length > 0 && (
+                <ul className="mt-3 flex list-disc flex-col gap-1 pl-6 text-text-secondary marker:text-text-secondary">
+                  {result.warningSigns.map((sign) => (
+                    <li key={sign.kind}>{warningSignText[sign.kind](sign, result.parts.host)}</li>
+                  ))}
                 </ul>
               )}
             </section>

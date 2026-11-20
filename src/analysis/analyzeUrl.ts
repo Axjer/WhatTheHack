@@ -1,4 +1,6 @@
+import { brands } from './brands';
 import { sharedPlatforms } from './sharedPlatforms';
+import { urlShorteners } from './urlShorteners';
 
 /** 惡意網址清單的來源（每日由 GitHub Actions 合併） */
 export const listSources = ['URLhaus', 'OpenPhish'] as const;
@@ -17,8 +19,17 @@ export type MaliciousEntry = {
   lastSeen: string;
 };
 
-/** 判定結果（見 GLOSSARY.md）。「可疑」在加入警訊後補上 */
-export type Verdict = 'known-malicious' | 'no-record';
+/** 判定結果（見 GLOSSARY.md） */
+export type Verdict = 'known-malicious' | 'suspicious' | 'no-record';
+
+/** 五項警訊；陣列順序即檢查與顯示順序 */
+export const warningSignKinds = ['ip-address', 'url-shortener', 'punycode', 'brand-lookalike', 'at-sign'] as const;
+export type WarningSignKind = (typeof warningSignKinds)[number];
+
+/** 網址符合的一項警訊；仿冒品牌時附上被仿冒的品牌名稱 */
+export type WarningSign =
+  | { kind: Exclude<WarningSignKind, 'brand-lookalike'> }
+  | { kind: 'brand-lookalike'; brand: string };
 
 /** 在惡意網址清單中相符的方式；null 表示不在清單中 */
 export type ListMatch = 'full-url' | 'domain' | null;
@@ -43,6 +54,8 @@ export type UrlAnalysis = {
   sources: SourceResult[];
   /** 命中紀錄標記的威脅類型，依 threats 的順序 */
   threats: Threat[];
+  /** 符合的警訊，依 warningSignKinds 的順序；已知惡意時也會列出 */
+  warningSigns: WarningSign[];
   firstSeen: string | null;
   lastSeen: string | null;
 };
@@ -51,23 +64,28 @@ export type UrlAnalysis = {
 export type AnalysisResult = { status: 'not-url' } | UrlAnalysis;
 
 /**
- * 網址分析模組的唯一入口：驗證輸入、正規化、與惡意網址清單比對並給出判定結果。
+ * 網址分析模組的唯一入口：驗證輸入、正規化、與惡意網址清單比對、檢查警訊並給出判定結果。
+ * 判定順序：惡意網址清單 → 警訊 → 查無紀錄。
  * 純函式，全部在瀏覽器內完成，不發出任何網路請求。
  */
 export function analyzeUrl(input: string, maliciousList: readonly MaliciousEntry[]): AnalysisResult {
   const url = parseSingleUrl(input);
   if (!url) return { status: 'not-url' };
 
-  const sharedPlatform = isSharedPlatform(url.hostname);
+  const sharedPlatform = isUnder(url.hostname, sharedPlatforms);
+  const shortener = isUnder(url.hostname, urlShorteners);
+  // 共用平台與短網址：任何人都能建立網址，只比對完整網址
+  const fullUrlOnly = sharedPlatform || shortener;
   const index = indexOf(maliciousList);
   const urlHits = index.byUrl.get(url.matchKey) ?? [];
-  const domainHits = sharedPlatform ? [] : (index.byDomain.get(url.hostname) ?? []);
+  const domainHits = fullUrlOnly ? [] : (index.byDomain.get(url.hostname) ?? []);
   const match: ListMatch = urlHits.length ? 'full-url' : domainHits.length ? 'domain' : null;
   const hits = urlHits.length ? urlHits : domainHits;
+  const warningSigns = warningSignsOf(url, shortener);
 
   return {
     status: 'analyzed',
-    verdict: match ? 'known-malicious' : 'no-record',
+    verdict: match ? 'known-malicious' : warningSigns.length ? 'suspicious' : 'no-record',
     match,
     sharedPlatform,
     domainReported: domainHits.length > 0,
@@ -79,9 +97,34 @@ export function analyzeUrl(input: string, maliciousList: readonly MaliciousEntry
       return { source, hit: fromSource.length > 0, lastSeen: latest(fromSource.map((entry) => entry.lastSeen)) };
     }),
     threats: threats.filter((threat) => hits.some((entry) => entry.threat === threat)),
+    warningSigns,
     firstSeen: earliest(hits.map((entry) => entry.firstSeen)),
     lastSeen: latest(hits.map((entry) => entry.lastSeen)),
   };
+}
+
+function warningSignsOf(url: ParsedUrl, shortener: boolean): WarningSign[] {
+  const signs: WarningSign[] = [];
+  const isIp = url.hostname.startsWith('[') || isIpv4(url.hostname);
+  if (isIp) signs.push({ kind: 'ip-address' });
+  if (shortener) signs.push({ kind: 'url-shortener' });
+  if (url.hostname.split('.').some((label) => label.startsWith('xn--'))) signs.push({ kind: 'punycode' });
+  const brand = isIp ? undefined : impersonatedBrand(url.hostname);
+  if (brand) signs.push({ kind: 'brand-lookalike', brand });
+  // 只看網域前的 @（user@host）：瀏覽器會忽略 @ 前面的文字，路徑裡的 @ 不影響連到哪裡
+  if (url.hasUserinfo) signs.push({ kind: 'at-sign' });
+  return signs;
+}
+
+/** 網域含有品牌關鍵字，卻不是該品牌的官方網域 → 回傳品牌名稱 */
+function impersonatedBrand(hostname: string): string | undefined {
+  const segments = hostname.split(/[.-]/);
+  return brands.find(
+    ({ keywords, officialDomains, officialPattern }) =>
+      keywords.some((keyword) => (keyword.length >= 5 ? hostname.includes(keyword) : segments.includes(keyword))) &&
+      !isUnder(hostname, officialDomains) &&
+      !officialPattern?.test(hostname),
+  )?.name;
 }
 
 function earliest(times: string[]): string | null {
@@ -99,6 +142,8 @@ type ParsedUrl = {
   matchKey: string;
   defanged: string;
   parts: UrlAnalysis['parts'];
+  /** 網域前有 user@ */
+  hasUserinfo: boolean;
 };
 
 /** 已 defang 的寫法：hxxp、[.]、(.)、{.}、[:]、[dot] */
@@ -144,9 +189,11 @@ function parseSingleUrl(input: string): ParsedUrl | null {
   return {
     hostname,
     normalized: `${protocol}://${userinfo}${host}${path}`,
-    matchKey: `${userinfo}${host}${path}`,
+    // 不含 user@：瀏覽器實際連到的網址不包括 @ 前面的文字
+    matchKey: `${host}${path}`,
     defanged: `${protocol.replace('http', 'hxxp')}://${userinfo}${defangedHost}${path}`,
     parts: { protocol, host: defangedHost, path: path || '/' },
+    hasUserinfo: userinfo !== '',
   };
 }
 
@@ -170,8 +217,9 @@ function isIpv4(text: string): boolean {
   return !!octets && octets.slice(1).every((octet) => Number(octet) <= 255);
 }
 
-function isSharedPlatform(hostname: string): boolean {
-  return sharedPlatforms.some((platform) => hostname === platform || hostname.endsWith(`.${platform}`));
+/** hostname 是清單中的某個網域，或是它的子網域 */
+function isUnder(hostname: string, domains: readonly string[]): boolean {
+  return domains.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
 }
 
 type ListIndex = { byUrl: Map<string, MaliciousEntry[]>; byDomain: Map<string, MaliciousEntry[]> };
