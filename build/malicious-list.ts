@@ -6,6 +6,12 @@ import {
   type MaliciousList,
 } from '../src/analysis/analyzeUrl.ts';
 
+/**
+ * OpenPhish 的 feed 只列出目前仍活著的網址，掉出今天 feed 不代表立刻失效。
+ * 掉出後保留 7 天才真正移除清單；URLhaus 本身已經用 url_status 判斷是否在線，不需要這個保留期。
+ */
+const OPENPHISH_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
 type BuildInput = {
   /** URLhaus 的 CSV 原始文字；null 表示抓取失敗 */
   urlhausCsv: string | null;
@@ -37,9 +43,16 @@ export function buildMaliciousList({ urlhausCsv, openphishText, previous, now }:
     const fresh = freshBySource[source];
     const previousOfSource = previousEntries.filter((entry) => entry.source === source);
     if (fresh.length) {
-      // 上一份清單中仍出現的網址一起去重，沿用較早的首次發現時間（OpenPhish 不提供時間）
       const freshKeys = new Set(fresh.map(keyOf));
-      entries.push(...fresh, ...previousOfSource.filter((entry) => freshKeys.has(keyOf(entry))));
+      const retentionMs = source === 'OpenPhish' ? OPENPHISH_RETENTION_MS : 0;
+      const carried = previousOfSource.filter(
+        (entry) =>
+          // 今天的 feed 裡還在：一起去重，沿用較早的首次發現時間（OpenPhish 不提供時間）
+          freshKeys.has(keyOf(entry)) ||
+          // 掉出今天的 feed，但還在保留期內：原本的發現時間不變
+          now.getTime() - Date.parse(entry.lastSeen) <= retentionMs,
+      );
+      entries.push(...fresh, ...carried);
       sourceUpdatedAt[source] = time;
     } else {
       // 失敗的來源沿用上一份的紀錄與更新時間
