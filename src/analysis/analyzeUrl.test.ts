@@ -124,7 +124,7 @@ describe('完整網址與網域比對', () => {
     });
   });
 
-  it('不在清單中 → 查無紀錄，所有來源都未命中', () => {
+  it('不在清單中 → 所有來源都未命中', () => {
     const result = analyzed('https://example.org');
     expect(result).toMatchObject({
       verdict: 'no-record',
@@ -165,6 +165,99 @@ describe('共用平台只比對完整網址', () => {
   it('共用平台的子網域也算共用平台', () => {
     expect(analyzed('https://attacker.github.io/steal').verdict).toBe('known-malicious');
     expect(analyzed('https://attacker.github.io/blog')).toMatchObject({ verdict: 'no-record', sharedPlatform: true });
+  });
+});
+
+describe('警訊', () => {
+  const kindsOf = (input: string) => analyzed(input).warningSigns;
+
+  it.each([
+    ['IPv4', 'http://192.168.0.1/admin'],
+    ['IPv6', 'http://[2001:db8::1]/login'],
+  ])('直接使用 IP 位址（%s）', (_, input) => {
+    expect(kindsOf(input)).toEqual(['ip-address']);
+  });
+
+  it('一般網域不算使用 IP 位址', () => {
+    expect(kindsOf('https://example.org/192.168.0.1')).toEqual([]);
+  });
+
+  it.each(['https://bit.ly/3abcDEF', 'reurl.cc/AbCd12', 'https://lihi1.cc/xyz'])('短網址服務：%s', (input) => {
+    expect(kindsOf(input)).toEqual(['url-shortener']);
+  });
+
+  it('網域只是含有短網址服務的名稱不算', () => {
+    expect(kindsOf('https://notbit.ly.example/a')).toEqual([]);
+  });
+
+  it.each(['https://shopee-tw.vip/order', 'https://xn--80ak6aa92e.com', 'https://台灣.tw'])(
+    '只檢查三項警訊：網域含品牌名稱或 Punycode 不算（%s）',
+    (input) => {
+      expect(analyzed(input)).toMatchObject({ verdict: 'no-record', warningSigns: [] });
+    },
+  );
+
+  it('網址中含 @（@ 前面是障眼法）', () => {
+    expect(kindsOf('http://bank.example@evil.example/login')).toEqual(['at-sign']);
+    expect(kindsOf('https://user:pass@example.org')).toEqual(['at-sign']);
+  });
+
+  it('路徑或查詢字串中的 @ 不算', () => {
+    expect(kindsOf('https://medium.com/@someone/post')).toEqual([]);
+    expect(kindsOf('https://example.org/share?to=a@b.example')).toEqual([]);
+  });
+
+  it('@ 前面的文字不影響比對：仍以完整網址命中清單', () => {
+    expect(analyzed('https://drive.google.com@drive.google.com/file/d/bad-file/view')).toMatchObject({
+      verdict: 'known-malicious',
+      match: 'full-url',
+      warningSigns: ['at-sign'],
+    });
+  });
+
+  it('同時符合多項警訊時全部列出，順序固定', () => {
+    expect(kindsOf('http://shopee.example@192.168.0.1/login')).toEqual(['ip-address', 'at-sign']);
+  });
+});
+
+describe('判定順序：惡意網址清單 → 警訊 → 查無紀錄', () => {
+  it('不在清單中但符合警訊 → 可疑', () => {
+    expect(analyzed('http://192.168.0.1/admin')).toMatchObject({ verdict: 'suspicious', match: null });
+  });
+
+  it('沒有任何警訊 → 查無紀錄', () => {
+    expect(analyzed('https://example.org')).toMatchObject({ verdict: 'no-record', warningSigns: [] });
+  });
+
+  it('在清單中又符合警訊 → 仍是已知惡意，並列出符合的警訊', () => {
+    const list: MaliciousEntry[] = [
+      {
+        url: 'http://192.168.0.1/admin',
+        source: 'URLhaus',
+        threat: 'malware',
+        firstSeen: '2026-11-10T00:00:00Z',
+        lastSeen: '2026-11-18T00:00:00Z',
+      },
+    ];
+    const result = analyzeUrl('http://192.168.0.1/admin', list);
+    expect(result).toMatchObject({
+      verdict: 'known-malicious',
+      warningSigns: ['ip-address'],
+    });
+  });
+
+  it('短網址只比對完整網址：同一服務的其他短網址不會因此被判為已知惡意', () => {
+    const list: MaliciousEntry[] = [
+      {
+        url: 'https://bit.ly/evil123',
+        source: 'URLhaus',
+        threat: 'malware',
+        firstSeen: '2026-11-10T00:00:00Z',
+        lastSeen: '2026-11-18T00:00:00Z',
+      },
+    ];
+    expect(analyzeUrl('https://bit.ly/evil123', list)).toMatchObject({ verdict: 'known-malicious' });
+    expect(analyzeUrl('https://bit.ly/other', list)).toMatchObject({ verdict: 'suspicious', domainReported: false });
   });
 });
 

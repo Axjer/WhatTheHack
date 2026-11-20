@@ -95,8 +95,39 @@ describe('網址分析頁', () => {
     expect(within(tags).getByText('釣魚')).toBeInTheDocument();
     expect(within(tags).getByText('惡意程式下載')).toBeInTheDocument();
 
-    const rows = within(within(details).getByRole('table')).getAllByRole('row').slice(1);
+    const sources = within(details).getByRole('region', { name: '來源比對' });
+    const rows = within(sources).getAllByRole('row').slice(1);
     expect(rows.map((row) => within(row).getAllByRole('cell')[0].textContent)).toEqual(['命中', '命中']);
+  });
+
+  it('可疑：燈號（圖示＋文字）並以白話說明符合的警訊', async () => {
+    const { analyze } = setup();
+    await analyze('https://bit.ly/3abcDEF');
+
+    expect(verdictHeading()).toHaveTextContent('⚠️可疑');
+    const card = verdictCard();
+    expect(within(card).getByText(/不在惡意網址清單中，但有可疑的地方/)).toBeInTheDocument();
+    expect(within(card).getByText('這是短網址，看不出點開後真正會連到哪裡。')).toBeInTheDocument();
+  });
+
+  it('已知惡意且符合警訊：仍是已知惡意，詳細報告說明符合的警訊', async () => {
+    const { user, analyze } = setup();
+    // 暫時清單中的網址加上「someone@」：仍連到同一個網址，但符合「網址中含 @」
+    await analyze('https://someone@evil-login.example/pay');
+
+    expect(verdictHeading()).toHaveTextContent('已知惡意');
+    await user.click(screen.getByText('分析報告（詳細）'));
+    const parts = screen.getByRole('region', { name: '網址拆解' });
+    expect(within(parts).getByText(/瀏覽器會忽略 @ 前面的文字/)).toBeInTheDocument();
+  });
+
+  it('詳細報告不逐項列出五項警訊的檢查結果', async () => {
+    const { user, analyze } = setup();
+    await analyze('example.org');
+    await user.click(screen.getByText('分析報告（詳細）'));
+
+    expect(screen.queryByRole('region', { name: '警訊檢查' })).not.toBeInTheDocument();
+    expect(screen.queryByText('未符合')).not.toBeInTheDocument();
   });
 
   it('網址只以 defang 格式顯示，報告中沒有任何連結', async () => {
