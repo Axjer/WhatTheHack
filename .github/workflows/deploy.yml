@@ -3,6 +3,9 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  # 每天 00:00 UTC（台灣時間 08:00）更新惡意網址清單並重新部署
+  schedule:
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 permissions:
@@ -25,8 +28,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - id: pages
+        uses: actions/configure-pages@v5
+      # 抓取 URLhaus 與 OpenPhish；任一來源失敗時沿用目前已部署的清單，不會中斷部署
+      - run: npm run update-list
+        env:
+          URLHAUS_AUTH_KEY: ${{ secrets.URLHAUS_AUTH_KEY }}
+          PREVIOUS_LIST_URL: ${{ steps.pages.outputs.base_url }}/data/malicious-urls.json
       - run: npm run build
-      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

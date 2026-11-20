@@ -1,5 +1,6 @@
-import { sharedPlatforms } from './sharedPlatforms';
-import { urlShorteners } from './urlShorteners';
+// 帶 .ts 副檔名：每日資料整理腳本用 Node 直接執行時也會載入這個模組
+import { sharedPlatforms } from './sharedPlatforms.ts';
+import { urlShorteners } from './urlShorteners.ts';
 
 /** 惡意網址清單的來源（每日由 GitHub Actions 合併） */
 export const listSources = ['URLhaus', 'OpenPhish'] as const;
@@ -16,6 +17,13 @@ export type MaliciousEntry = {
   threat: Threat;
   firstSeen: string;
   lastSeen: string;
+};
+
+/** 隨網站部署的惡意網址清單檔（每日由 build/update-malicious-list.ts 產生） */
+export type MaliciousList = {
+  /** 每個來源最近一次成功更新的時間（ISO 8601）；從未成功為 null */
+  sourceUpdatedAt: Record<ListSource, string | null>;
+  entries: MaliciousEntry[];
 };
 
 /** 判定結果（見 GLOSSARY.md） */
@@ -94,6 +102,11 @@ export function analyzeUrl(input: string, maliciousList: readonly MaliciousEntry
     firstSeen: earliest(hits.map((entry) => entry.firstSeen)),
     lastSeen: latest(hits.map((entry) => entry.lastSeen)),
   };
+}
+
+/** 正規化單一網址（小寫、去除 `www.`、補 scheme、去除結尾 `/`）；不是單一網址時回傳 null */
+export function normalizeUrl(input: string): string | null {
+  return parseSingleUrl(input)?.normalized ?? null;
 }
 
 function warningSignsOf(url: ParsedUrl, shortener: boolean): WarningSign[] {

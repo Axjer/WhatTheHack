@@ -1,16 +1,68 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MaliciousList } from '../analysis/analyzeUrl';
 import AnalyzePage from './AnalyzePage';
 
-function setup() {
+const HOUR = 60 * 60 * 1000;
+const hoursAgo = (hours: number) => new Date(Date.now() - hours * HOUR).toISOString();
+
+/** 假的惡意網址清單（取代每日更新的清單檔） */
+let fakeList: MaliciousList;
+
+/** 假清單；兩個來源各自的更新時間（null 表示從未成功更新） */
+function listUpdatedAt(urlhaus: string | null, openphish: string | null = urlhaus): MaliciousList {
+  return {
+    sourceUpdatedAt: { URLhaus: urlhaus, OpenPhish: openphish },
+    entries: [
+      {
+        url: 'https://evil-login.example/pay',
+        source: 'URLhaus',
+        threat: 'malware',
+        firstSeen: '2026-11-13T00:00:00.000Z',
+        lastSeen: '2026-11-18T00:00:00.000Z',
+      },
+      {
+        url: 'https://evil-login.example/pay',
+        source: 'OpenPhish',
+        threat: 'phishing',
+        firstSeen: '2026-11-14T00:00:00.000Z',
+        lastSeen: '2026-11-15T00:00:00.000Z',
+      },
+      {
+        url: 'https://drive.google.com/file/d/fake-malware-file/view',
+        source: 'URLhaus',
+        threat: 'malware',
+        firstSeen: '2026-11-12T00:00:00.000Z',
+        lastSeen: '2026-11-16T00:00:00.000Z',
+      },
+    ],
+  };
+}
+
+/** 設為 true 時，清單載入失敗 */
+let loadFails: boolean;
+
+vi.mock('../data/loadMaliciousList', () => ({
+  loadMaliciousList: () => (loadFails ? Promise.reject(new Error('HTTP 404')) : Promise.resolve(fakeList)),
+}));
+
+beforeEach(() => {
+  loadFails = false;
+  // 預設是兩個來源都剛更新過的清單
+  fakeList = listUpdatedAt(hoursAgo(1));
+});
+
+/** 渲染網址分析頁，並等清單載入完成 */
+async function setup() {
   const user = userEvent.setup();
   render(
     <MemoryRouter>
       <AnalyzePage />
     </MemoryRouter>,
   );
+  await screen.findByText(/^清單更新於：/);
   async function analyze(text: string) {
     const input = screen.getByRole('textbox', { name: '要查詢的網址' });
     await user.clear(input);
@@ -30,16 +82,54 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe('惡意網址清單的更新時間', () => {
+  it('以台灣時間顯示「清單更新於：YYYY-MM-DD HH:MM」，取最舊的來源', async () => {
+    fakeList = listUpdatedAt('2026-11-13T00:00:00.000Z', '2026-11-19T00:00:00.000Z');
+    await setup();
+    expect(screen.getByText('清單更新於：2026-11-13 08:00')).toBeInTheDocument();
+  });
+
+  it('某個來源超過 48 小時沒更新 → 指出是哪個來源，提醒結果可能不夠新', async () => {
+    fakeList = listUpdatedAt(hoursAgo(49), hoursAgo(1));
+    await setup();
+    expect(screen.getByText('URLhaus 已超過 48 小時沒有更新，判定結果可能不夠新。')).toBeInTheDocument();
+  });
+
+  it('某個來源從未成功更新 → 同樣提醒', async () => {
+    fakeList = listUpdatedAt(null, hoursAgo(1));
+    await setup();
+    expect(screen.getByText('URLhaus 已超過 48 小時沒有更新，判定結果可能不夠新。')).toBeInTheDocument();
+  });
+
+  it('清單載入失敗 → 說明原因，且不能查詢', async () => {
+    loadFails = true;
+    render(
+      <MemoryRouter>
+        <AnalyzePage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/無法載入惡意網址清單/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '查詢' })).toBeDisabled();
+  });
+
+  it('兩個來源都在 48 小時內更新過 → 不顯示提醒', async () => {
+    fakeList = listUpdatedAt(hoursAgo(47));
+    await setup();
+    expect(screen.queryByText(/已超過 48 小時沒有更新/)).not.toBeInTheDocument();
+  });
+});
+
 describe('網址分析頁', () => {
-  it('輸入框是頁面上第一個表單元件', () => {
-    setup();
+  it('輸入框是頁面上第一個表單元件', async () => {
+    await setup();
     expect(screen.getAllByRole('textbox')[0]).toHaveAccessibleName('要查詢的網址');
   });
 
   it.each(['', '您的包裹 https://evil-login.example/pay 待領取', 'hxxps://evil-login[.]example/pay', 'someone@example.com'])(
     '「%s」不是網址 → 顯示「請輸入網址」且不顯示燈號',
     async (text) => {
-      const { analyze } = setup();
+      const { analyze } = await setup();
       await analyze(text);
 
       expect(screen.getByText('請輸入網址')).toBeInTheDocument();
@@ -49,7 +139,7 @@ describe('網址分析頁', () => {
   );
 
   it('已知惡意：燈號（圖示＋文字）、白話判斷、命中來源數與建議行動', async () => {
-    const { analyze } = setup();
+    const { analyze } = await setup();
     await analyze('https://evil-login.example/pay');
 
     expect(verdictHeading()).toHaveTextContent('⛔已知惡意');
@@ -67,7 +157,7 @@ describe('網址分析頁', () => {
   });
 
   it('查無紀錄：燈號（圖示＋文字）與固定文案', async () => {
-    const { analyze } = setup();
+    const { analyze } = await setup();
     await analyze('example.org');
 
     expect(verdictHeading()).toHaveTextContent('❔查無紀錄');
@@ -79,7 +169,7 @@ describe('網址分析頁', () => {
   });
 
   it('分析報告（詳細）預設折疊，展開後有網址拆解、標籤與時間、來源比對', async () => {
-    const { user, analyze } = setup();
+    const { user, analyze } = await setup();
     await analyze('https://evil-login.example/pay');
 
     const details = screen.getByText('分析報告（詳細）').closest('details')!;
@@ -101,7 +191,7 @@ describe('網址分析頁', () => {
   });
 
   it('可疑：燈號（圖示＋文字）並以白話說明符合的警訊', async () => {
-    const { analyze } = setup();
+    const { analyze } = await setup();
     await analyze('https://bit.ly/3abcDEF');
 
     expect(verdictHeading()).toHaveTextContent('⚠️可疑');
@@ -111,8 +201,8 @@ describe('網址分析頁', () => {
   });
 
   it('已知惡意且符合警訊：仍是已知惡意，詳細報告說明符合的警訊', async () => {
-    const { user, analyze } = setup();
-    // 暫時清單中的網址加上「someone@」：仍連到同一個網址，但符合「網址中含 @」
+    const { user, analyze } = await setup();
+    // 假清單中的網址加上「someone@」：仍連到同一個網址，但符合「網址中含 @」
     await analyze('https://someone@evil-login.example/pay');
 
     expect(verdictHeading()).toHaveTextContent('已知惡意');
@@ -122,7 +212,7 @@ describe('網址分析頁', () => {
   });
 
   it('詳細報告不逐項列出五項警訊的檢查結果', async () => {
-    const { user, analyze } = setup();
+    const { user, analyze } = await setup();
     await analyze('example.org');
     await user.click(screen.getByText('分析報告（詳細）'));
 
@@ -131,7 +221,7 @@ describe('網址分析頁', () => {
   });
 
   it('網址只以 defang 格式顯示，報告中沒有任何連結', async () => {
-    const { analyze } = setup();
+    const { analyze } = await setup();
     await analyze('https://evil-login.example/pay');
 
     expect(within(verdictCard()).getByText(/hxxps:\/\/evil-login\[\.\]example\/pay/)).toBeInTheDocument();
@@ -141,14 +231,14 @@ describe('網址分析頁', () => {
   });
 
   it('共用平台上網域被收錄但完整網址不符 → 查無紀錄', async () => {
-    const { analyze } = setup();
+    const { analyze } = await setup();
     await analyze('https://drive.google.com/file/d/my-report/view');
     expect(verdictHeading()).toHaveTextContent('查無紀錄');
   });
 
   it('分析時不送出任何網路請求', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const { analyze } = setup();
+    const { analyze } = await setup();
     await analyze('https://evil-login.example/pay');
     await analyze('example.org');
     expect(fetchSpy).not.toHaveBeenCalled();
