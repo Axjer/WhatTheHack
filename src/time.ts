@@ -20,8 +20,6 @@ const dateTimeFormat = new Intl.DateTimeFormat('en-CA', {
 });
 const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
 const monthDayFormat = new Intl.DateTimeFormat('zh-TW', { timeZone: TIME_ZONE, month: 'numeric', day: 'numeric' });
-const weekdayFormat = new Intl.DateTimeFormat('zh-TW', { timeZone: TIME_ZONE, weekday: 'short' });
-
 /** YYYY-MM-DD HH:MM（例：清單更新於、情資更新於） */
 export function formatTaipeiTime(iso: string): string {
   const parts = dateTimeFormat.formatToParts(new Date(iso));
@@ -30,18 +28,21 @@ export function formatTaipeiTime(iso: string): string {
 }
 
 /** YYYY-MM-DD：用來把同一天的資料歸在一起 */
-export function formatTaipeiDay(iso: string): string {
+function formatTaipeiDay(iso: string): string {
   return dayFormat.format(new Date(iso));
 }
 
 /** 11/23 */
-export function formatMonthDay(iso: string): string {
+function formatMonthDay(iso: string): string {
   return monthDayFormat.format(new Date(iso));
 }
 
-/** 週一 */
-export function formatWeekday(iso: string): string {
-  return weekdayFormat.format(new Date(iso));
+/** 今天／昨天／11/20：以台灣時間的日曆日比較（台灣沒有日光節約時間，一天固定 24 小時） */
+export function formatRelativeDay(iso: string, now: number): string {
+  const day = formatTaipeiDay(iso);
+  if (day === formatTaipeiDay(new Date(now).toISOString())) return '今天';
+  if (day === formatTaipeiDay(new Date(now - 24 * 60 * 60 * 1000).toISOString())) return '昨天';
+  return formatMonthDay(iso);
 }
 
 /** 更新時間是否已超過 48 小時 */
