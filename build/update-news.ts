@@ -1,6 +1,6 @@
 /**
  * 每日更新最新情資的新聞摘要：抓 The Hacker News 的 RSS 與文章全文，
- * 呼叫 Gemini 3.8 Flash（重試後仍過載時改用 Gemini 4 Hydrogen）產生白話中文摘要，寫到 public/data/news.json。
+ * 呼叫 Gemini 3.8 Flash 產生白話中文摘要，寫到 public/data/news.json。
  * 由部署 workflow 在 build 前執行（`npm run update-news`）。
  *
  * 環境變數：
@@ -10,11 +10,10 @@
  * 任何失敗都不會讓這個腳本失敗：失敗時沿用上一份，網站照常部署。
  */
 import { writeFile } from 'node:fs/promises';
-import { ApiError, GoogleGenAI, type GenerateContentParameters } from '@google/genai';
+import { ApiError, GoogleGenAI, type HttpOptions } from '@google/genai';
 import { z } from 'zod';
 import type { NewsFile, NewsSummary } from '../src/data/news.ts';
 import { fetchText, readPrevious } from './fetch.ts';
-import { withRetry } from './retry.ts';
 import { buildNews, extractArticleText, parseFeed, type FeedItem } from './news.ts';
 
 const OUTPUT = new URL('../public/data/news.json', import.meta.url);
@@ -23,10 +22,7 @@ const FEED_URL = 'https://feeds.feedburner.com/TheHackersNews';
 const MAX_ARTICLES = 3;
 /** 全文太短（抓失敗或版面改變）時改用 RSS 摘錄 */
 const MIN_ARTICLE_CHARS = 200;
-/** 主模型在前，備用模型在後 */
-const MODELS = ['gemini-3.8-flash', 'gemini-4-hydrogen'];
-/** 每個模型遇到暫時性錯誤時，重試前等待的時間（最多重試兩次） */
-const RETRY_DELAYS_MS = [10_000, 30_000];
+const MODEL = 'gemini-3.8-flash';
 
 const SYSTEM_PROMPT = `你是「駭你好」網站的編輯，替不懂資安的台灣上班族整理資安新聞。
 
@@ -48,43 +44,30 @@ function isNewsFile(value: unknown): value is NewsFile {
   return typeof value === 'object' && value !== null && Array.isArray((value as NewsFile).items);
 }
 
-/** 暫時性錯誤：請求太頻繁（429）、伺服器錯誤（500）、過載（503）。其他錯誤（如 key 無效）重試也沒用 */
-function isTransientError(error: unknown): error is ApiError {
-  return error instanceof ApiError && [429, 500, 503].includes(error.status);
-}
-
 /**
- * 依序試每個模型；每個模型遇到暫時性錯誤時等待後重試。
- * 主模型重試後仍失敗時改用備用模型（不同模型的負載各自獨立，一個忙時另一個常常不忙）。
+ * SDK 內建的重試：遇到 408、429、5xx（例如 503 過載）時以指數退避重試。
+ * 共試 3 次，間隔約 10 到 30 秒；每次請求最多等 60 秒。
  */
-async function generateWithFallback(client: GoogleGenAI, request: Omit<GenerateContentParameters, 'model'>) {
-  let lastError: unknown;
-  for (const model of MODELS) {
-    try {
-      return await withRetry(() => client.models.generateContent({ ...request, model }), {
-        delaysMs: RETRY_DELAYS_MS,
-        isRetryable: isTransientError,
-      });
-    } catch (error) {
-      if (!isTransientError(error)) throw error;
-      console.warn(`${model} 重試後仍無法使用（HTTP ${error.status}）`);
-      lastError = error;
-    }
-  }
-  throw lastError;
-}
+const HTTP_OPTIONS: HttpOptions = {
+  timeout: 60_000,
+  retryOptions: { attempts: 3, initialDelay: 10, maxDelay: 30 },
+};
 
 /** 用 Gemini 產生白話摘要的函式，連同累計的 token 用量；任何失敗都讓該篇回傳 null */
 function makeSummarizer(client: GoogleGenAI) {
   const usage = { input: 0, output: 0 };
+  /** 重試後仍是暫時性錯誤（過載、額度用完）時，這次執行不再呼叫 Gemini，免得每篇都空等一輪 */
+  let unavailable = false;
   const summarize = async (item: FeedItem): Promise<NewsSummary | null> => {
+    if (unavailable) return null;
     const html = await fetchText(`文章「${item.title}」`, item.url);
     const fullText = html ? extractArticleText(html) : '';
     const articleText = fullText.length >= MIN_ARTICLE_CHARS ? fullText : item.excerpt;
     if (!articleText) return null;
 
     try {
-      const response = await generateWithFallback(client, {
+      const response = await client.models.generateContent({
+        model: MODEL,
         contents: `${SYSTEM_PROMPT}\n\n<title>${item.title}</title>\n<article>\n${articleText}\n</article>`,
         config: {
           responseMimeType: 'application/json',
@@ -108,6 +91,10 @@ function makeSummarizer(client: GoogleGenAI) {
       if (!parsed.success || !parsed.data.headline.trim() || !parsed.data.summary.trim()) return null;
       return { headline: parsed.data.headline.trim(), summary: parsed.data.summary.trim() };
     } catch (error) {
+      if (error instanceof ApiError && (error.status === 429 || error.status >= 500)) {
+        unavailable = true;
+        console.warn(`Gemini 重試後仍無法使用（HTTP ${error.status}）：本次其餘文章不再摘要，沿用上一份`);
+      }
       // 只印錯誤訊息，不印任何可能含 key 的內容（API key 不會出現在錯誤訊息中）
       console.warn(`文章「${item.title}」：摘要失敗（${error instanceof Error ? error.message : 'unknown error'}）`);
       return null;
@@ -124,7 +111,7 @@ const items = feedXml ? parseFeed(feedXml) : [];
 
 const apiKey = process.env.GEMINI_API_KEY?.trim();
 if (!apiKey) console.warn('沒有設定 GEMINI_API_KEY：不產生新摘要，沿用上一份');
-const summarizer = apiKey ? makeSummarizer(new GoogleGenAI({ apiKey })) : null;
+const summarizer = apiKey ? makeSummarizer(new GoogleGenAI({ apiKey, httpOptions: HTTP_OPTIONS })) : null;
 
 const news = await buildNews({
   items,
