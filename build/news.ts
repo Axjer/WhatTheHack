@@ -1,6 +1,6 @@
 /**
- * 最新情資的新聞整理模組：解析 The Hacker News 的 RSS、抽出文章全文、組成新聞摘要檔。
- * 純函式，不連網、不呼叫 API；抓取與呼叫 Claude 由 update-news.ts 負責，摘要函式由外部傳入。
+ * 最新情資的新聞整理模組：解析 The Hacker News 的 RSS、挑選焦點新聞、抽出文章全文、組成新聞摘要檔。
+ * 純函式，不連網、不呼叫 API；抓取與呼叫 Gemini 由 update-news.ts 負責，挑選與摘要函式由外部傳入。
  */
 
 import type { NewsFile, NewsItem, NewsSummary } from '../src/data/news.ts';
@@ -48,6 +48,41 @@ export async function buildNews({ items, previous, now, summarize, limit }: Buil
     .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
     .slice(0, limit);
   return { updatedAt: now.toISOString(), items: merged };
+}
+
+/** 只挑這段時間內發布的新聞 */
+const SELECTION_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+type SelectTopItemsInput = {
+  /** RSS 解析出的文章，由新到舊 */
+  items: FeedItem[];
+  now: Date;
+  /** 最多挑幾篇 */
+  limit: number;
+  /** 從候選文章挑出最重要的幾篇，回傳候選陣列的索引（依重要性排）；失敗回傳 null */
+  choose: (candidates: FeedItem[]) => Promise<number[] | null>;
+};
+
+/**
+ * 從過去 24 小時內的新聞挑出最重要的 limit 篇，依發布時間由新到舊排。
+ * 不超過 limit 篇就全收、不必挑選；挑選失敗或結果不足時，用最新的補足。
+ */
+export async function selectTopItems({ items, now, limit, choose }: SelectTopItemsInput): Promise<FeedItem[]> {
+  const since = now.getTime() - SELECTION_WINDOW_MS;
+  const candidates = items.filter((item) => {
+    const published = Date.parse(item.publishedAt);
+    return published > since && published <= now.getTime();
+  });
+  if (candidates.length <= limit) return candidates;
+
+  const picks = new Set<number>();
+  for (const index of (await choose(candidates)) ?? []) {
+    if (picks.size >= limit) break;
+    if (Number.isInteger(index) && index >= 0 && index < candidates.length) picks.add(index);
+  }
+  // 挑選失敗或不足：依序用最新的補上
+  for (let index = 0; picks.size < limit; index++) picks.add(index);
+  return candidates.filter((_, index) => picks.has(index));
 }
 
 /** RSS 裡的一篇新聞 */
