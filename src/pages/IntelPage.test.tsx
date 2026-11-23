@@ -61,6 +61,40 @@ describe('最新情資頁：AI 白話新聞摘要', () => {
     expect(screen.getAllByRole('article')).toHaveLength(2);
   });
 
+  it('每張卡片底部標示來源與發布日（台灣時間的今天／昨天）', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-23T12:00:00.000Z')); // 台灣 11/23 20:00
+    try {
+      renderPage();
+      const today = (await screen.findByRole('heading', { name: 'ASP.NET 舊套件漏洞遭駭客利用' })).closest('article')!;
+      const yesterday = screen.getByRole('heading', { name: '新型惡意程式鎖定銀行' }).closest('article')!;
+
+      expect(within(today).getByText('The Hacker News ·', { exact: false })).toHaveTextContent('The Hacker News · 今天');
+      expect(within(yesterday).getByText('The Hacker News ·', { exact: false })).toHaveTextContent('The Hacker News · 昨天');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('有分類的摘要卡顯示分類標籤；舊資料沒有分類就不顯示', async () => {
+    fakeNews = {
+      ...twoArticles,
+      items: [{ ...twoArticles.items[0], category: '漏洞' }, twoArticles.items[1]],
+    };
+    renderPage();
+    const withCategory = (await screen.findByRole('heading', { name: 'ASP.NET 舊套件漏洞遭駭客利用' })).closest('article')!;
+    const withoutCategory = screen.getByRole('heading', { name: '新型惡意程式鎖定銀行' }).closest('article')!;
+
+    expect(within(withCategory).getByText('漏洞')).toBeInTheDocument();
+    expect(within(withoutCategory).queryByText(/^(漏洞|惡意程式|詐騙|資料外洩|駭客攻擊)$/)).not.toBeInTheDocument();
+  });
+
+  it('區塊標題顯示篇數，卡片下方提醒 AI 摘要可能有誤', async () => {
+    renderPage();
+    expect(await screen.findByRole('heading', { name: '2 篇焦點新聞' })).toBeInTheDocument();
+    expect(screen.getByText('AI 摘要可能有誤，請以原文為準。')).toBeInTheDocument();
+  });
+
   it('以台灣時間顯示「情資更新於：YYYY-MM-DD HH:MM」', async () => {
     renderPage();
     expect(await screen.findByText('情資更新於：2026-11-23 08:00')).toBeInTheDocument();

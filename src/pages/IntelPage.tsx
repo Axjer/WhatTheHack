@@ -2,28 +2,10 @@ import { useEffect, useId, useState } from 'react';
 import type { NewsFile, NewsItem } from '../data/news';
 import { loadNews } from '../data/loadNews';
 import { textLinkClass } from '../styles';
-import {
-  DAILY_UPDATE_TIME,
-  formatMonthDay,
-  formatTaipeiDay,
-  formatTaipeiTime,
-  formatWeekday,
-  isStale,
-} from '../time';
+import { DAILY_UPDATE_TIME, formatRelativeDay, formatTaipeiTime, isStale } from '../time';
 
-type DayGroup = { day: string; items: NewsItem[] };
-
-/** 依發布日期（台灣時間）分組，保持由新到舊 */
-function groupByDay(items: NewsItem[]): DayGroup[] {
-  const groups: DayGroup[] = [];
-  for (const item of items) {
-    const day = formatTaipeiDay(item.publishedAt);
-    const last = groups.at(-1);
-    if (last?.day === day) last.items.push(item);
-    else groups.push({ day, items: [item] });
-  }
-  return groups;
-}
+/** 新聞來源（目前只有一個；標在區塊說明與卡片底部） */
+const NEWS_SOURCE = 'The Hacker News';
 
 /**
  * 摘要區塊的結構化資料（schema.org NewsArticle），讓搜尋引擎認得這些是新聞摘要。
@@ -39,6 +21,7 @@ function NewsJsonLd({ items }: { items: NewsItem[] }) {
       datePublished: item.publishedAt,
       inLanguage: 'zh-TW',
       isBasedOn: item.url,
+      ...(item.category && { articleSection: item.category }),
     })),
   };
   return (
@@ -58,44 +41,53 @@ function ExternalIcon() {
   );
 }
 
-/** 載入中的骨架屏：一個日期欄加兩張卡片，形狀與真實版面相同 */
+/** 直式卡片：撐滿格子高度，讓同一排的卡片等高 */
+const cardClass = 'flex h-full flex-col rounded-xl bg-surface-raised p-5 shadow-sm md:p-6';
+/** 卡片底部：來源、日期與原文連結 */
+const cardFooterClass =
+  'mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-text-primary/10 pt-4 text-sm';
+
+/** 載入中的骨架屏：三張直式卡片，形狀與真實版面相同 */
 function NewsSkeleton() {
   return (
-    <div aria-hidden="true" className="grid gap-3 md:grid-cols-[6rem_minmax(0,1fr)] md:gap-8">
-      <div className="flex gap-2 md:flex-col md:pt-5">
-        <div className="skeleton h-7 w-16" />
-        <div className="skeleton h-4 w-8" />
-      </div>
-      <div className="flex flex-col gap-4">
-        {[0, 1].map((key) => (
-          <div key={key} className="rounded-xl bg-surface-raised p-5 shadow-sm md:p-6">
-            <div className="skeleton h-6 w-3/4" />
-            <div className="skeleton mt-4 h-4 w-full" />
-            <div className="skeleton mt-2 h-4 w-full" />
-            <div className="skeleton mt-2 h-4 w-2/3" />
-            <div className="mt-5 flex justify-between">
-              <div className="skeleton h-5 w-16 rounded-full" />
-              <div className="skeleton h-5 w-28" />
-            </div>
+    <div aria-hidden="true" className="grid gap-4 lg:grid-cols-3 lg:gap-6">
+      {[0, 1, 2].map((key) => (
+        <div key={key} className={cardClass}>
+          <div className="flex justify-between">
+            <div className="skeleton h-7 w-14 rounded-full" />
+            <div className="skeleton h-7 w-20 rounded-full" />
           </div>
-        ))}
-      </div>
+          <div className="skeleton mt-4 h-6 w-4/5" />
+          <div className="skeleton mt-4 h-4 w-full" />
+          <div className="skeleton mt-2 h-4 w-full" />
+          <div className="skeleton mt-2 mb-6 h-4 w-2/3" />
+          <div className={cardFooterClass}>
+            <div className="skeleton h-4 w-28" />
+            <div className="skeleton h-4 w-24" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
 
-function NewsCard({ item }: { item: NewsItem }) {
+function NewsCard({ item, now }: { item: NewsItem; now: number }) {
   const headingId = useId();
   return (
-    <article aria-labelledby={headingId} className="rounded-xl bg-surface-raised p-5 shadow-sm md:p-6">
-      <h3 id={headingId} className="text-xl leading-snug font-bold">
+    <article aria-labelledby={headingId} className={cardClass}>
+      {/* 分類（主色實心）與 AI 摘要標示（主色字＋帶藍淺底）；都只用主色深藍，紅黃灰留給判定結果 */}
+      <div className="flex items-center gap-2 text-sm font-medium">
+        {item.category && <span className="rounded-full bg-primary px-3 py-1 text-surface-raised">{item.category}</span>}
+        <span className="ml-auto rounded-full bg-surface-sunken px-3 py-1 text-primary">AI 摘要</span>
+      </div>
+      <h3 id={headingId} className="mt-4 text-xl leading-snug font-bold">
         {item.headline}
       </h3>
-      <p className="mt-3">{item.summary}</p>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm">
-        {/* AI 摘要的標示：主色字＋帶藍淺底，不用燈號顏色 */}
-        <span className="inline-flex items-center rounded-full bg-surface-sunken px-3 py-0.5 font-medium text-primary">
-          AI 摘要
+      <p className="mt-3 mb-6">{item.summary}</p>
+      {/* 底部對齊：三張卡片摘要長短不同，來源與連結仍排在同一條線上 */}
+      <div className={cardFooterClass}>
+        <span className="text-text-secondary">
+          {NEWS_SOURCE} · <time dateTime={item.publishedAt}>{formatRelativeDay(item.publishedAt, now)}</time>
         </span>
         <a href={item.url} target="_blank" rel="noopener noreferrer" className={textLinkClass}>
           閱讀原文（英文）
@@ -108,13 +100,14 @@ function NewsCard({ item }: { item: NewsItem }) {
 }
 
 /**
- * 最新情資頁：The Hacker News 重點新聞的 AI 白話摘要，依發布日期分組。
- * 新聞有時間順序，所以用左側日期欄的閱讀清單，而不是卡片網格。不使用燈號顏色。
+ * 最新情資頁：The Hacker News 重點新聞的 AI 白話摘要。
+ * 桌面版三張直式卡片並排，手機版上下排列。不使用燈號顏色。
  */
 export default function IntelPage() {
   const [news, setNews] = useState<NewsFile | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const loading = !news && !loadFailed;
+  const now = Date.now();
 
   useEffect(() => {
     let active = true;
@@ -135,57 +128,46 @@ export default function IntelPage() {
     <div className="mx-auto w-full max-w-6xl px-4 py-10 md:px-6 md:py-16">
       <div className="max-w-4xl">
         <h1>最新情資</h1>
-        <p className="mt-4 text-text-secondary">
-          用白話整理最近的資安新聞，{DAILY_UPDATE_TIME}更新。摘要由 AI 根據原文產生，細節請以原文為準。
-        </p>
+        <p className="mt-4 text-text-secondary">用白話整理最近的資安新聞，{DAILY_UPDATE_TIME}更新。</p>
         {news?.updatedAt && (
           <p className="mt-1 text-sm text-text-secondary">情資更新於：{formatTaipeiTime(news.updatedAt)}</p>
         )}
         {/* 提醒用主要文字色與帶藍的淺色底：紅黃灰只留給判定結果 */}
-        {news?.updatedAt && isStale(news.updatedAt, Date.now()) && (
+        {news?.updatedAt && isStale(news.updatedAt, now) && (
           <p className="mt-2 rounded-lg bg-surface-sunken px-3 py-2 text-sm">
             情資已超過 48 小時沒有更新，內容可能不是最新的。
           </p>
         )}
-
-        <section aria-labelledby="news-title" aria-busy={loading} className="mt-10">
-          <h2 id="news-title" className="sr-only">
-            資安新聞摘要
-          </h2>
-          {loading && <NewsSkeleton />}
-          {loadFailed && (
-            <p role="alert" className="rounded-lg bg-surface-sunken px-4 py-3">
-              無法載入最新情資，請重新整理頁面再試一次。
-            </p>
-          )}
-          {news && !news.items.length && (
-            <p className="rounded-lg bg-surface-sunken px-4 py-3">
-              目前還沒有整理好的新聞。{DAILY_UPDATE_TIME}會自動更新，請稍後再回來看看。
-            </p>
-          )}
-          {news && news.items.length > 0 && (
-            <>
-              <NewsJsonLd items={news.items} />
-              <ol className="flex flex-col gap-10">
-                {groupByDay(news.items).map(({ day, items }) => (
-                  <li key={day} className="grid gap-3 md:grid-cols-[6rem_minmax(0,1fr)] md:gap-8">
-                    {/* 日期欄：同一天的新聞只標一次日期 */}
-                    <time dateTime={day} className="flex items-baseline gap-2 md:flex-col md:gap-0 md:pt-5">
-                      <span className="text-2xl font-bold tabular-nums">{formatMonthDay(items[0].publishedAt)}</span>
-                      <span className="text-sm text-text-secondary">{formatWeekday(items[0].publishedAt)}</span>
-                    </time>
-                    <div className="flex flex-col gap-4">
-                      {items.map((item) => (
-                        <NewsCard key={item.url} item={item} />
-                      ))}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </>
-          )}
-        </section>
       </div>
+
+      <section aria-label="資安新聞摘要" aria-busy={loading} className="mt-10">
+        {loading && <NewsSkeleton />}
+        {loadFailed && (
+          <p role="alert" className="max-w-4xl rounded-lg bg-surface-sunken px-4 py-3">
+            無法載入最新情資，請重新整理頁面再試一次。
+          </p>
+        )}
+        {news && !news.items.length && (
+          <p className="max-w-4xl rounded-lg bg-surface-sunken px-4 py-3">
+            目前還沒有整理好的新聞。{DAILY_UPDATE_TIME}會自動更新，請稍後再回來看看。
+          </p>
+        )}
+        {news && news.items.length > 0 && (
+          <>
+            <NewsJsonLd items={news.items} />
+            <h2>{news.items.length} 篇焦點新聞</h2>
+            <p className="mt-1 text-text-secondary">整理自 {NEWS_SOURCE}，由 AI 改寫成白話摘要</p>
+            <ul className="mt-6 grid gap-4 lg:grid-cols-3 lg:gap-6">
+              {news.items.map((item) => (
+                <li key={item.url}>
+                  <NewsCard item={item} now={now} />
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-sm text-text-secondary">AI 摘要可能有誤，請以原文為準。</p>
+          </>
+        )}
+      </section>
     </div>
   );
 }
