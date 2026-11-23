@@ -61,9 +61,12 @@ function makeSummarizer(client: GoogleGenAI) {
   let unavailable = false;
   const summarize = async (item: FeedItem): Promise<NewsSummary | null> => {
     if (unavailable) return null;
-    const html = await fetchText(`文章「${item.title}」`, item.url);
+    const html = await fetchText(`文章「${item.title}」的全文`, item.url);
     const fullText = html ? extractArticleText(html) : '';
-    const articleText = fullText.length >= MIN_ARTICLE_CHARS ? fullText : item.excerpt;
+    const hasFullText = fullText.length >= MIN_ARTICLE_CHARS;
+    const articleText = hasFullText ? fullText : item.excerpt;
+    // 全文抓不到（例如網站的防機器人機制回 403）不算失敗：改用 RSS 摘錄，摘要照常產生
+    if (!hasFullText && articleText) console.warn(`文章「${item.title}」：改用 RSS 摘錄寫摘要`);
     if (!articleText) return null;
 
     try {
