@@ -1,8 +1,11 @@
 /** 網站上所有日期時間都以台灣時間顯示 */
 const TIME_ZONE = 'Asia/Taipei';
 
+/** 一天（台灣沒有日光節約時間，一天固定 24 小時） */
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /** 資料超過這個時間沒更新就提醒（惡意網址清單、最新情資） */
-export const STALE_AFTER_MS = 48 * 60 * 60 * 1000;
+export const STALE_AFTER_MS = 2 * DAY_MS;
 
 /**
  * 每日更新的時間，對應 .github/workflows/deploy.yml 的排程（00:00 UTC）。改排程時要一起改。
@@ -20,6 +23,7 @@ const dateTimeFormat = new Intl.DateTimeFormat('en-CA', {
 });
 const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
 const monthDayFormat = new Intl.DateTimeFormat('zh-TW', { timeZone: TIME_ZONE, month: 'numeric', day: 'numeric' });
+
 /** YYYY-MM-DD HH:MM（例：清單更新於、情資更新於） */
 export function formatTaipeiTime(iso: string): string {
   const parts = dateTimeFormat.formatToParts(new Date(iso));
@@ -27,22 +31,17 @@ export function formatTaipeiTime(iso: string): string {
   return `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}`;
 }
 
-/** YYYY-MM-DD：用來把同一天的資料歸在一起 */
-function formatTaipeiDay(iso: string): string {
-  return dayFormat.format(new Date(iso));
+/** 台灣時間的日曆日 YYYY-MM-DD：用來比較兩個時間是不是同一天 */
+function taipeiDay(time: string | number): string {
+  return dayFormat.format(new Date(time));
 }
 
-/** 11/23 */
-function formatMonthDay(iso: string): string {
-  return monthDayFormat.format(new Date(iso));
-}
-
-/** 今天／昨天／11/20：以台灣時間的日曆日比較（台灣沒有日光節約時間，一天固定 24 小時） */
+/** 今天／昨天／11/20：以台灣時間的日曆日比較 */
 export function formatRelativeDay(iso: string, now: number): string {
-  const day = formatTaipeiDay(iso);
-  if (day === formatTaipeiDay(new Date(now).toISOString())) return '今天';
-  if (day === formatTaipeiDay(new Date(now - 24 * 60 * 60 * 1000).toISOString())) return '昨天';
-  return formatMonthDay(iso);
+  const day = taipeiDay(iso);
+  if (day === taipeiDay(now)) return '今天';
+  if (day === taipeiDay(now - DAY_MS)) return '昨天';
+  return monthDayFormat.format(new Date(iso));
 }
 
 /** 更新時間是否已超過 48 小時 */

@@ -44,7 +44,7 @@ function ExternalIcon() {
 const cardClass = 'flex h-full flex-col rounded-xl bg-surface-raised p-5 shadow-sm md:p-6';
 /** 卡片底部：來源、日期與原文連結 */
 const cardFooterClass =
-  'mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-surface-sunken pt-4 text-sm';
+  'mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-text-primary/10 pt-4 text-sm';
 
 /** 載入中的骨架屏：三張直式卡片，形狀與真實版面相同 */
 function NewsSkeleton() {
