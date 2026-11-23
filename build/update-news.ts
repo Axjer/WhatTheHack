@@ -1,6 +1,6 @@
 /**
  * 每日更新最新情資的新聞摘要：抓 The Hacker News 的 RSS 與文章全文，
- * 呼叫 Gemini 3.8 Flash 產生白話中文摘要，寫到 public/data/news.json。
+ * 呼叫 Gemini 3.8 Flash（重試後仍過載時改用 Gemini 4 Hydrogen）產生白話中文摘要，寫到 public/data/news.json。
  * 由部署 workflow 在 build 前執行（`npm run update-news`）。
  *
  * 環境變數：
@@ -10,10 +10,11 @@
  * 任何失敗都不會讓這個腳本失敗：失敗時沿用上一份，網站照常部署。
  */
 import { writeFile } from 'node:fs/promises';
-import { GoogleGenAI } from '@google/genai';
+import { ApiError, GoogleGenAI, type GenerateContentParameters } from '@google/genai';
 import { z } from 'zod';
 import type { NewsFile, NewsSummary } from '../src/data/news.ts';
 import { fetchText, readPrevious } from './fetch.ts';
+import { withRetry } from './retry.ts';
 import { buildNews, extractArticleText, parseFeed, type FeedItem } from './news.ts';
 
 const OUTPUT = new URL('../public/data/news.json', import.meta.url);
@@ -22,7 +23,10 @@ const FEED_URL = 'https://feeds.feedburner.com/TheHackersNews';
 const MAX_ARTICLES = 3;
 /** 全文太短（抓失敗或版面改變）時改用 RSS 摘錄 */
 const MIN_ARTICLE_CHARS = 200;
-const MODEL = 'gemini-3.8-flash';
+/** 主模型在前，備用模型在後 */
+const MODELS = ['gemini-3.8-flash', 'gemini-4-hydrogen'];
+/** 每個模型遇到暫時性錯誤時，重試前等待的時間（最多重試兩次） */
+const RETRY_DELAYS_MS = [10_000, 30_000];
 
 const SYSTEM_PROMPT = `你是「駭你好」網站的編輯，替不懂資安的台灣上班族整理資安新聞。
 
@@ -44,18 +48,30 @@ function isNewsFile(value: unknown): value is NewsFile {
   return typeof value === 'object' && value !== null && Array.isArray((value as NewsFile).items);
 }
 
-/** 伺服器過載（503）多半是暫時的，等幾秒重試一次；其他錯誤不重試，直接放棄這篇 */
-async function generateWithRetry(
-  client: GoogleGenAI,
-  params: Parameters<GoogleGenAI['models']['generateContent']>[0],
-) {
-  try {
-    return await client.models.generateContent(params);
-  } catch (error) {
-    if (!(error instanceof Error) || !/"code":\s*503/.test(error.message)) throw error;
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    return await client.models.generateContent(params);
+/** 暫時性錯誤：請求太頻繁（429）、伺服器錯誤（500）、過載（503）。其他錯誤（如 key 無效）重試也沒用 */
+function isTransientError(error: unknown): error is ApiError {
+  return error instanceof ApiError && [429, 500, 503].includes(error.status);
+}
+
+/**
+ * 依序試每個模型；每個模型遇到暫時性錯誤時等待後重試。
+ * 主模型重試後仍失敗時改用備用模型（不同模型的負載各自獨立，一個忙時另一個常常不忙）。
+ */
+async function generateWithFallback(client: GoogleGenAI, request: Omit<GenerateContentParameters, 'model'>) {
+  let lastError: unknown;
+  for (const model of MODELS) {
+    try {
+      return await withRetry(() => client.models.generateContent({ ...request, model }), {
+        delaysMs: RETRY_DELAYS_MS,
+        isRetryable: isTransientError,
+      });
+    } catch (error) {
+      if (!isTransientError(error)) throw error;
+      console.warn(`${model} 重試後仍無法使用（HTTP ${error.status}）`);
+      lastError = error;
+    }
   }
+  throw lastError;
 }
 
 /** 用 Gemini 產生白話摘要的函式，連同累計的 token 用量；任何失敗都讓該篇回傳 null */
@@ -68,8 +84,7 @@ function makeSummarizer(client: GoogleGenAI) {
     if (!articleText) return null;
 
     try {
-      const response = await generateWithRetry(client, {
-        model: MODEL,
+      const response = await generateWithFallback(client, {
         contents: `${SYSTEM_PROMPT}\n\n<title>${item.title}</title>\n<article>\n${articleText}\n</article>`,
         config: {
           responseMimeType: 'application/json',
