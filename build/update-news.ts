@@ -1,6 +1,6 @@
 /**
  * 每日更新最新情資的新聞摘要：抓 The Hacker News 的 RSS 與文章全文，
- * 呼叫 Gemini 4 Hydrogen 產生白話中文摘要，寫到 public/data/news.json。
+ * 呼叫 Gemini 3.8 Flash 產生白話中文摘要，寫到 public/data/news.json。
  * 由部署 workflow 在 build 前執行（`npm run update-news`）。
  *
  * 環境變數：
@@ -22,7 +22,7 @@ const FEED_URL = 'https://feeds.feedburner.com/TheHackersNews';
 const MAX_ARTICLES = 3;
 /** 全文太短（抓失敗或版面改變）時改用 RSS 摘錄 */
 const MIN_ARTICLE_CHARS = 200;
-const MODEL = 'gemini-4-hydrogen';
+const MODEL = 'gemini-3.8-flash';
 
 const SYSTEM_PROMPT = `你是「駭你好」網站的編輯，替不懂資安的台灣上班族整理資安新聞。
 
@@ -44,6 +44,20 @@ function isNewsFile(value: unknown): value is NewsFile {
   return typeof value === 'object' && value !== null && Array.isArray((value as NewsFile).items);
 }
 
+/** 伺服器過載（503）多半是暫時的，等幾秒重試一次；其他錯誤不重試，直接放棄這篇 */
+async function generateWithRetry(
+  client: GoogleGenAI,
+  params: Parameters<GoogleGenAI['models']['generateContent']>[0],
+) {
+  try {
+    return await client.models.generateContent(params);
+  } catch (error) {
+    if (!(error instanceof Error) || !/"code":\s*503/.test(error.message)) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    return await client.models.generateContent(params);
+  }
+}
+
 /** 用 Gemini 產生白話摘要的函式，連同累計的 token 用量；任何失敗都讓該篇回傳 null */
 function makeSummarizer(client: GoogleGenAI) {
   const usage = { input: 0, output: 0 };
@@ -54,7 +68,7 @@ function makeSummarizer(client: GoogleGenAI) {
     if (!articleText) return null;
 
     try {
-      const response = await client.models.generateContent({
+      const response = await generateWithRetry(client, {
         model: MODEL,
         contents: `${SYSTEM_PROMPT}\n\n<title>${item.title}</title>\n<article>\n${articleText}\n</article>`,
         config: {

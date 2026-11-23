@@ -98,7 +98,7 @@ Issue 記錄在 GitHub 的 Axjer/WhatTheHack 儲存庫（使用 `gh` CLI 操作�
 
 ### 最新情資
 
-- **新聞**：The Hacker News 重點新聞，由 GitHub Actions 呼叫 Gemini 4 Hydrogen（`gemini-4-hydrogen`）產生 2–3 句白話摘要，提示詞限定只根據原文。每篇標示「AI 摘要」並附原文連結。API key 存於 GitHub Secrets，不得寫入程式碼。摘要區塊加上 JSON-LD（`NewsArticle`）。
+- **新聞**：The Hacker News 重點新聞，由 GitHub Actions 呼叫 Gemini 3.8 Flash（`gemini-3.8-flash`）產生 2–3 句白話摘要，提示詞限定只根據原文。每篇標示「AI 摘要」並附原文連結。API key 存於 GitHub Secrets，不得寫入程式碼。摘要區塊加上 JSON-LD（`NewsArticle`）。
 - **CISA KEV**：新聞上方一行白話橫幅，例：「本週新增 N 個已遭駭客利用的漏洞，主要影響 Microsoft、Apple，請更新電腦」。不使用燈號顏色。
 
 ### 首頁
