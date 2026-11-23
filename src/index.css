@@ -209,3 +209,35 @@
     translate: 0 0;
   }
 }
+
+/*
+ * 載入中的骨架屏：照真實版面的形狀畫色塊，只用原生 CSS。
+ * 底色取主色深藍與卡片白的混色：帶藍，不會和「查無紀錄」的灰混淆；減少動態效果時不播放閃爍。
+ */
+.skeleton {
+  border-radius: 0.5rem;
+  background-color: color-mix(in oklch, var(--color-primary) 10%, var(--color-surface-raised));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in oklch, var(--color-surface-raised) 70%, transparent) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}

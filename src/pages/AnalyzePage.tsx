@@ -3,9 +3,7 @@ import { analyzeUrl, listSources, type AnalysisResult, type MaliciousList } from
 import AnalysisReport from '../components/AnalysisReport';
 import { loadMaliciousList } from '../data/loadMaliciousList';
 import { buttonClass, disableableClass } from '../styles';
-
-/** 清單超過這個時間沒更新就提醒 */
-const STALE_AFTER_MS = 48 * 60 * 60 * 1000;
+import { formatTaipeiTime, isStale } from '../time';
 
 /** 清單的更新時間取最舊的來源：整份清單只算更新到最慢的那個來源 */
 function oldestUpdate(list: MaliciousList): string | null {
@@ -17,23 +15,8 @@ function oldestUpdate(list: MaliciousList): string | null {
 function staleSourcesOf(list: MaliciousList, now: number): string[] {
   return listSources.filter((source) => {
     const updatedAt = list.sourceUpdatedAt[source];
-    return !updatedAt || now - Date.parse(updatedAt) > STALE_AFTER_MS;
+    return !updatedAt || isStale(updatedAt, now);
   });
-}
-
-/** 以台灣時間格式化為 YYYY-MM-DD HH:MM */
-function formatTaipeiTime(iso: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Taipei',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(new Date(iso));
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? '';
-  return `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}`;
 }
 
 /**

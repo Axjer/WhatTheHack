@@ -20,6 +20,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # 外部來源或 Gemini 卡住時不要空跑到預設的 6 小時上限
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,6 +37,11 @@ jobs:
         env:
           URLHAUS_AUTH_KEY: ${{ secrets.URLHAUS_AUTH_KEY }}
           PREVIOUS_LIST_URL: ${{ steps.pages.outputs.base_url }}/data/malicious-urls.json
+      # 抓 The Hacker News 並用 Gemini 3.5 Flash-Lite 產生白話摘要；沒有 API key 或失敗時沿用目前已部署的摘要
+      - run: npm run update-news
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PREVIOUS_NEWS_URL: ${{ steps.pages.outputs.base_url }}/data/news.json
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
