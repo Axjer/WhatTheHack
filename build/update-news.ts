@@ -9,19 +9,18 @@
  *
  * 任何失敗都不會讓這個腳本失敗：失敗時沿用上一份，網站照常部署。
  */
-import { readFile, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
 import type { NewsFile, NewsSummary } from '../src/data/news.ts';
+import { fetchText, readPrevious } from './fetch.ts';
 import { buildNews, extractArticleText, parseFeed, type FeedItem } from './news.ts';
 
 const OUTPUT = new URL('../public/data/news.json', import.meta.url);
 const FEED_URL = 'https://feeds.feedburner.com/TheHackersNews';
-const USER_AGENT = 'hack-ni-hao-news-builder';
-const TIMEOUT_MS = 60_000;
-/** 每天收幾篇 */
-const LIMIT = 6;
+/** 情資頁收幾篇（取 RSS 最新的幾篇） */
+const MAX_ARTICLES = 3;
 /** 全文太短（抓失敗或版面改變）時改用 RSS 摘錄 */
 const MIN_ARTICLE_CHARS = 200;
 const MODEL = 'claude-haiku-5-5';
@@ -41,44 +40,14 @@ const SummarySchema = z.object({
   summary: z.string(),
 });
 
-/** 抓取文字；失敗時回傳 null */
-async function fetchText(label: string, url: string): Promise<string | null> {
-  try {
-    const response = await fetch(url, {
-      headers: { 'User-Agent': USER_AGENT },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    if (!response.ok) {
-      console.warn(`${label}：抓取失敗（HTTP ${response.status}）`);
-      return null;
-    }
-    return await response.text();
-  } catch (error) {
-    console.warn(`${label}：抓取失敗（${error instanceof Error ? error.name : 'unknown error'}）`);
-    return null;
-  }
-}
-
 function isNewsFile(value: unknown): value is NewsFile {
   return typeof value === 'object' && value !== null && Array.isArray((value as NewsFile).items);
 }
 
-async function readPrevious(): Promise<NewsFile | null> {
-  const previousUrl = process.env.PREVIOUS_NEWS_URL;
-  try {
-    const text = previousUrl ? await fetchText('上一份新聞檔', previousUrl) : await readFile(OUTPUT, 'utf8');
-    const value: unknown = text ? JSON.parse(text) : null;
-    return isNewsFile(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-const usage = { input: 0, output: 0 };
-
-/** 用 Claude 產生一篇文章的白話摘要；任何失敗都回傳 null */
+/** 用 Claude 產生白話摘要的函式，連同累計的 token 用量；任何失敗都讓該篇回傳 null */
 function makeSummarizer(client: Anthropic) {
-  return async (item: FeedItem): Promise<NewsSummary | null> => {
+  const usage = { input: 0, output: 0 };
+  const summarize = async (item: FeedItem): Promise<NewsSummary | null> => {
     const html = await fetchText(`文章「${item.title}」`, item.url);
     const fullText = html ? extractArticleText(html) : '';
     const articleText = fullText.length >= MIN_ARTICLE_CHARS ? fullText : item.excerpt;
@@ -121,21 +90,33 @@ function makeSummarizer(client: Anthropic) {
       return null;
     }
   };
+  return { summarize, usage };
 }
 
-const [feedXml, previous] = await Promise.all([fetchText('The Hacker News RSS', FEED_URL), readPrevious()]);
+const [feedXml, previous] = await Promise.all([
+  fetchText('The Hacker News RSS', FEED_URL),
+  readPrevious('上一份新聞檔', process.env.PREVIOUS_NEWS_URL, OUTPUT, isNewsFile),
+]);
 const items = feedXml ? parseFeed(feedXml) : [];
 
 const hasKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
 if (!hasKey) console.warn('沒有設定 ANTHROPIC_API_KEY：不產生新摘要，沿用上一份');
-const summarize = hasKey ? makeSummarizer(new Anthropic()) : async () => null;
+const summarizer = hasKey ? makeSummarizer(new Anthropic()) : null;
 
-const news = await buildNews({ items, previous, now: new Date(), summarize, limit: LIMIT });
+const news = await buildNews({
+  items,
+  previous,
+  now: new Date(),
+  summarize: summarizer?.summarize ?? (async () => null),
+  limit: MAX_ARTICLES,
+});
 
 if (!news) {
   console.warn('沒有任何摘要，也沒有上一份新聞檔：保留現有檔案，不覆蓋');
 } else {
   await writeFile(OUTPUT, `${JSON.stringify(news)}\n`);
   console.log(`新聞摘要：共 ${news.items.length} 篇，更新於 ${news.updatedAt ?? '（從未更新）'}`);
-  console.log(`Claude 用量：輸入 ${usage.input} tokens、輸出 ${usage.output} tokens`);
+  if (summarizer) {
+    console.log(`Claude 用量：輸入 ${summarizer.usage.input} tokens、輸出 ${summarizer.usage.output} tokens`);
+  }
 }

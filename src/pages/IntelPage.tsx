@@ -2,12 +2,14 @@ import { useEffect, useId, useState } from 'react';
 import type { NewsFile, NewsItem } from '../data/news';
 import { loadNews } from '../data/loadNews';
 import { textLinkClass } from '../styles';
-import { formatTaipeiTime } from '../time';
-
-/** 台灣時間的日期，用來把同一天的新聞歸在一起 */
-const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' });
-const monthDayFormat = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' });
-const weekdayFormat = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', weekday: 'short' });
+import {
+  DAILY_UPDATE_TIME,
+  formatMonthDay,
+  formatTaipeiDay,
+  formatTaipeiTime,
+  formatWeekday,
+  isStale,
+} from '../time';
 
 type DayGroup = { day: string; items: NewsItem[] };
 
@@ -15,7 +17,7 @@ type DayGroup = { day: string; items: NewsItem[] };
 function groupByDay(items: NewsItem[]): DayGroup[] {
   const groups: DayGroup[] = [];
   for (const item of items) {
-    const day = dayFormat.format(new Date(item.publishedAt));
+    const day = formatTaipeiDay(item.publishedAt);
     const last = groups.at(-1);
     if (last?.day === day) last.items.push(item);
     else groups.push({ day, items: [item] });
@@ -134,10 +136,16 @@ export default function IntelPage() {
       <div className="max-w-4xl">
         <h1>最新情資</h1>
         <p className="mt-4 text-text-secondary">
-          用白話整理最近的資安新聞，每天早上 8 點更新。摘要由 AI 根據原文產生，細節請以原文為準。
+          用白話整理最近的資安新聞，{DAILY_UPDATE_TIME}更新。摘要由 AI 根據原文產生，細節請以原文為準。
         </p>
         {news?.updatedAt && (
           <p className="mt-1 text-sm text-text-secondary">情資更新於：{formatTaipeiTime(news.updatedAt)}</p>
+        )}
+        {/* 提醒用主要文字色與帶藍的淺色底：紅黃灰只留給判定結果 */}
+        {news?.updatedAt && isStale(news.updatedAt, Date.now()) && (
+          <p className="mt-2 rounded-lg bg-surface-sunken px-3 py-2 text-sm">
+            情資已超過 48 小時沒有更新，內容可能不是最新的。
+          </p>
         )}
 
         <section aria-labelledby="news-title" aria-busy={loading} className="mt-10">
@@ -152,20 +160,19 @@ export default function IntelPage() {
           )}
           {news && !news.items.length && (
             <p className="rounded-lg bg-surface-sunken px-4 py-3">
-              目前還沒有整理好的新聞。每天早上 8 點會自動更新，請稍後再回來看看。
+              目前還沒有整理好的新聞。{DAILY_UPDATE_TIME}會自動更新，請稍後再回來看看。
             </p>
           )}
-          {news && news.items.length > 0 && <NewsJsonLd items={news.items} />}
           {news && news.items.length > 0 && (
-            <ol className="flex flex-col gap-10">
-              {groupByDay(news.items).map(({ day, items }) => {
-                const date = new Date(items[0].publishedAt);
-                return (
+            <>
+              <NewsJsonLd items={news.items} />
+              <ol className="flex flex-col gap-10">
+                {groupByDay(news.items).map(({ day, items }) => (
                   <li key={day} className="grid gap-3 md:grid-cols-[6rem_minmax(0,1fr)] md:gap-8">
                     {/* 日期欄：同一天的新聞只標一次日期 */}
                     <time dateTime={day} className="flex items-baseline gap-2 md:flex-col md:gap-0 md:pt-5">
-                      <span className="text-2xl font-bold tabular-nums">{monthDayFormat.format(date)}</span>
-                      <span className="text-sm text-text-secondary">{weekdayFormat.format(date)}</span>
+                      <span className="text-2xl font-bold tabular-nums">{formatMonthDay(items[0].publishedAt)}</span>
+                      <span className="text-sm text-text-secondary">{formatWeekday(items[0].publishedAt)}</span>
                     </time>
                     <div className="flex flex-col gap-4">
                       {items.map((item) => (
@@ -173,9 +180,9 @@ export default function IntelPage() {
                       ))}
                     </div>
                   </li>
-                );
-              })}
-            </ol>
+                ))}
+              </ol>
+            </>
           )}
         </section>
       </div>

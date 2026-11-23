@@ -124,10 +124,37 @@ describe('buildNews', () => {
     expect(news?.items.map((item) => item.headline)).toEqual(['標題 Article 1', '昨天的標題']);
   });
 
-  it('部分文章摘要失敗 → 只放成功的', async () => {
+  it('部分文章摘要失敗、也沒有上一份 → 只放成功的', async () => {
     const { summarize } = fakeSummarize(['Article 2']);
     const news = await buildNews({ items: feed(3), previous: null, now, summarize, limit: 3 });
     expect(news?.items.map((item) => item.title)).toEqual(['Article 1', 'Article 3']);
+  });
+
+  it('部分文章摘要失敗 → 用前一天的文章補足篇數，依發布時間由新到舊', async () => {
+    const previous: NewsFile = {
+      updatedAt: '2026-11-22T00:00:00.000Z',
+      items: [
+        {
+          headline: '前天的標題',
+          summary: '前天的摘要',
+          title: 'Older article',
+          url: 'https://thehackernews.com/2026/11/older.html',
+          publishedAt: '2026-11-15T00:00:00.000Z',
+        },
+        {
+          headline: '昨天的標題',
+          summary: '昨天的摘要',
+          title: 'Old article',
+          url: 'https://thehackernews.com/2026/11/old.html',
+          publishedAt: '2026-11-18T00:00:00.000Z',
+        },
+      ],
+    };
+    const { summarize } = fakeSummarize(['Article 2', 'Article 3']);
+    const news = await buildNews({ items: feed(3), previous, now, summarize, limit: 3 });
+
+    expect(news?.updatedAt).toBe('2026-11-23T00:00:00.000Z');
+    expect(news?.items.map((item) => item.title)).toEqual(['Article 1', 'Old article', 'Older article']);
   });
 
   describe('產生摘要失敗時保留前一天的資料', () => {

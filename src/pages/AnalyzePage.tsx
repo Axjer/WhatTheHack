@@ -3,10 +3,7 @@ import { analyzeUrl, listSources, type AnalysisResult, type MaliciousList } from
 import AnalysisReport from '../components/AnalysisReport';
 import { loadMaliciousList } from '../data/loadMaliciousList';
 import { buttonClass, disableableClass } from '../styles';
-import { formatTaipeiTime } from '../time';
-
-/** 清單超過這個時間沒更新就提醒 */
-const STALE_AFTER_MS = 48 * 60 * 60 * 1000;
+import { formatTaipeiTime, isStale } from '../time';
 
 /** 清單的更新時間取最舊的來源：整份清單只算更新到最慢的那個來源 */
 function oldestUpdate(list: MaliciousList): string | null {
@@ -18,7 +15,7 @@ function oldestUpdate(list: MaliciousList): string | null {
 function staleSourcesOf(list: MaliciousList, now: number): string[] {
   return listSources.filter((source) => {
     const updatedAt = list.sourceUpdatedAt[source];
-    return !updatedAt || now - Date.parse(updatedAt) > STALE_AFTER_MS;
+    return !updatedAt || isStale(updatedAt, now);
   });
 }
 

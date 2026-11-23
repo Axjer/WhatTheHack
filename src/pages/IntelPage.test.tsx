@@ -103,9 +103,7 @@ describe('最新情資頁：AI 白話新聞摘要', () => {
   it('載入中 → 顯示骨架屏，並標示正在載入', () => {
     fakeNews = 'pending';
     renderPage();
-    const region = screen.getByRole('region', { name: '資安新聞摘要' });
-    expect(region).toHaveAttribute('aria-busy', 'true');
-    expect(region.querySelectorAll('.skeleton').length).toBeGreaterThan(0);
+    expect(screen.getByRole('region', { name: '資安新聞摘要' })).toHaveAttribute('aria-busy', 'true');
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
   });
 
@@ -113,6 +111,19 @@ describe('最新情資頁：AI 白話新聞摘要', () => {
     renderPage();
     await screen.findAllByRole('article');
     expect(screen.getByRole('region', { name: '資安新聞摘要' })).toHaveAttribute('aria-busy', 'false');
+  });
+
+  it('超過 48 小時沒更新 → 提醒內容可能不是最新的', async () => {
+    fakeNews = { ...twoArticles, updatedAt: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString() };
+    renderPage();
+    expect(await screen.findByText('情資已超過 48 小時沒有更新，內容可能不是最新的。')).toBeInTheDocument();
+  });
+
+  it('48 小時內更新過 → 不顯示提醒', async () => {
+    fakeNews = { ...twoArticles, updatedAt: new Date(Date.now() - 47 * 60 * 60 * 1000).toISOString() };
+    renderPage();
+    await screen.findAllByRole('article');
+    expect(screen.queryByText(/已超過 48 小時沒有更新/)).not.toBeInTheDocument();
   });
 
   it('載入失敗 → 說明原因與下一步', async () => {

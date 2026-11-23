@@ -8,33 +8,15 @@
  *
  * 任何來源失敗都不會讓這個腳本失敗：失敗的來源沿用上一份清單，網站照常部署。
  */
-import { readFile, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import { listSources, type MaliciousList } from '../src/analysis/analyzeUrl.ts';
+import { fetchText, readPrevious } from './fetch.ts';
 import { buildMaliciousList } from './malicious-list.ts';
 
 const OUTPUT = new URL('../public/data/malicious-urls.json', import.meta.url);
 const OPENPHISH_URL = 'https://openphish.com/feed.txt';
-const USER_AGENT = 'hack-ni-hao-list-builder';
-const TIMEOUT_MS = 60_000;
 
-/** 抓取文字；失敗時回傳 null。不印出網址：URLhaus 的網址含 Auth-Key */
-async function fetchText(label: string, url: string): Promise<string | null> {
-  try {
-    const response = await fetch(url, {
-      headers: { 'User-Agent': USER_AGENT },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    if (!response.ok) {
-      console.warn(`${label}：抓取失敗（HTTP ${response.status}）`);
-      return null;
-    }
-    return await response.text();
-  } catch (error) {
-    console.warn(`${label}：抓取失敗（${error instanceof Error ? error.name : 'unknown error'}）`);
-    return null;
-  }
-}
-
+/** 不印出網址：URLhaus 的網址含 Auth-Key（fetchText 只印標籤與狀態） */
 function fetchUrlhaus(): Promise<string | null> {
   const key = process.env.URLHAUS_AUTH_KEY?.trim();
   if (!key) {
@@ -54,21 +36,10 @@ function isMaliciousList(value: unknown): value is MaliciousList {
   );
 }
 
-async function readPrevious(): Promise<MaliciousList | null> {
-  const previousUrl = process.env.PREVIOUS_LIST_URL;
-  try {
-    const text = previousUrl ? await fetchText('上一份清單', previousUrl) : await readFile(OUTPUT, 'utf8');
-    const value: unknown = text ? JSON.parse(text) : null;
-    return isMaliciousList(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-
 const [urlhausCsv, openphishText, previous] = await Promise.all([
   fetchUrlhaus(),
   fetchText('OpenPhish', OPENPHISH_URL),
-  readPrevious(),
+  readPrevious('上一份清單', process.env.PREVIOUS_LIST_URL, OUTPUT, isMaliciousList),
 ]);
 
 const list = buildMaliciousList({ urlhausCsv, openphishText, previous, now: new Date() });

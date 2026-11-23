@@ -41,7 +41,13 @@ export async function buildNews({ items, previous, now, summarize, limit }: Buil
     news.push({ ...summary, title: item.title, url: item.url, publishedAt: item.publishedAt });
   }
   if (!news.length || (needed > 0 && generated === 0)) return previous;
-  return { updatedAt: now.toISOString(), items: news };
+  // 部分失敗時不讓頁面變少：用上一份的文章補足篇數，再依發布時間由新到舊排
+  const included = new Set(news.map((item) => item.url));
+  const filler = (previous?.items ?? []).filter((item) => !included.has(item.url));
+  const merged = [...news, ...filler]
+    .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
+    .slice(0, limit);
+  return { updatedAt: now.toISOString(), items: merged };
 }
 
 /** RSS 裡的一篇新聞 */
