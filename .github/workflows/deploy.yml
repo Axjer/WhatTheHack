@@ -35,10 +35,10 @@ jobs:
         env:
           URLHAUS_AUTH_KEY: ${{ secrets.URLHAUS_AUTH_KEY }}
           PREVIOUS_LIST_URL: ${{ steps.pages.outputs.base_url }}/data/malicious-urls.json
-      # 抓 The Hacker News 並用 Claude Haiku 5.5 產生白話摘要；沒有 API key 或失敗時沿用目前已部署的摘要
+      # 抓 The Hacker News 並用 Gemini 4 Hydrogen 產生白話摘要；沒有 API key 或失敗時沿用目前已部署的摘要
       - run: npm run update-news
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PREVIOUS_NEWS_URL: ${{ steps.pages.outputs.base_url }}/data/news.json
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3

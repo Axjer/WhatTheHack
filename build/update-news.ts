@@ -1,17 +1,16 @@
 /**
  * 每日更新最新情資的新聞摘要：抓 The Hacker News 的 RSS 與文章全文，
- * 呼叫 Claude Haiku 5.5 產生白話中文摘要，寫到 public/data/news.json。
+ * 呼叫 Gemini 4 Hydrogen 產生白話中文摘要，寫到 public/data/news.json。
  * 由部署 workflow 在 build 前執行（`npm run update-news`）。
  *
  * 環境變數：
- * - ANTHROPIC_API_KEY：Claude API key（GitHub Secret）。沒有時不產生新摘要，沿用上一份。
+ * - GEMINI_API_KEY：Gemini API key（GitHub Secret，到 Google AI Studio 取得）。沒有時不產生新摘要，沿用上一份。
  * - PREVIOUS_NEWS_URL：目前已部署的新聞檔網址，作為「上一份」。沒有時改讀本機的輸出檔。
  *
  * 任何失敗都不會讓這個腳本失敗：失敗時沿用上一份，網站照常部署。
  */
 import { writeFile } from 'node:fs/promises';
-import Anthropic from '@anthropic-ai/sdk';
-import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
 import type { NewsFile, NewsSummary } from '../src/data/news.ts';
 import { fetchText, readPrevious } from './fetch.ts';
@@ -23,7 +22,7 @@ const FEED_URL = 'https://feeds.feedburner.com/TheHackersNews';
 const MAX_ARTICLES = 3;
 /** 全文太短（抓失敗或版面改變）時改用 RSS 摘錄 */
 const MIN_ARTICLE_CHARS = 200;
-const MODEL = 'claude-haiku-5-5';
+const MODEL = 'gemini-4-hydrogen';
 
 const SYSTEM_PROMPT = `你是「駭你好」網站的編輯，替不懂資安的台灣上班族整理資安新聞。
 
@@ -39,13 +38,14 @@ const SummarySchema = z.object({
   headline: z.string(),
   summary: z.string(),
 });
+const RESPONSE_SCHEMA = z.toJSONSchema(SummarySchema);
 
 function isNewsFile(value: unknown): value is NewsFile {
   return typeof value === 'object' && value !== null && Array.isArray((value as NewsFile).items);
 }
 
-/** 用 Claude 產生白話摘要的函式，連同累計的 token 用量；任何失敗都讓該篇回傳 null */
-function makeSummarizer(client: Anthropic) {
+/** 用 Gemini 產生白話摘要的函式，連同累計的 token 用量；任何失敗都讓該篇回傳 null */
+function makeSummarizer(client: GoogleGenAI) {
   const usage = { input: 0, output: 0 };
   const summarize = async (item: FeedItem): Promise<NewsSummary | null> => {
     const html = await fetchText(`文章「${item.title}」`, item.url);
@@ -54,39 +54,33 @@ function makeSummarizer(client: Anthropic) {
     if (!articleText) return null;
 
     try {
-      const response = await client.messages.parse({
+      const response = await client.models.generateContent({
         model: MODEL,
-        max_tokens: 4000,
-        system: SYSTEM_PROMPT,
-        // 摘要是簡單任務：低 effort 即可
-        output_config: { effort: 'low', format: zodOutputFormat(SummarySchema) },
-        messages: [
-          {
-            role: 'user',
-            content: `<title>${item.title}</title>\n<article>\n${articleText}\n</article>`,
-          },
-        ],
+        contents: `${SYSTEM_PROMPT}\n\n<title>${item.title}</title>\n<article>\n${articleText}\n</article>`,
+        config: {
+          responseMimeType: 'application/json',
+          responseJsonSchema: RESPONSE_SCHEMA,
+        },
       });
-      usage.input += response.usage.input_tokens;
-      usage.output += response.usage.output_tokens;
-      if (response.stop_reason !== 'end_turn') {
-        console.warn(`文章「${item.title}」：沒有完成摘要（${response.stop_reason}）`);
+      // token 用量僅供記錄；欄位沒有實際命中也不影響摘要產生，所以用防禦性讀取
+      usage.input += response.usageMetadata?.promptTokenCount ?? 0;
+      usage.output += response.usageMetadata?.candidatesTokenCount ?? 0;
+
+      const finishReason = response.candidates?.[0]?.finishReason;
+      if (finishReason && finishReason !== 'STOP') {
+        console.warn(`文章「${item.title}」：沒有完成摘要（${finishReason}）`);
         return null;
       }
-      const parsed = response.parsed_output;
-      if (!parsed?.headline.trim() || !parsed.summary.trim()) return null;
-      return { headline: parsed.headline.trim(), summary: parsed.summary.trim() };
-    } catch (error) {
-      // 只印錯誤類型與狀態碼，不印任何可能含 key 的內容
-      if (error instanceof Anthropic.AuthenticationError) {
-        console.warn('Claude API：API key 無效');
-      } else if (error instanceof Anthropic.RateLimitError) {
-        console.warn('Claude API：超過速率限制');
-      } else if (error instanceof Anthropic.APIError) {
-        console.warn(`Claude API：錯誤（HTTP ${error.status ?? '連線失敗'}）`);
-      } else {
-        console.warn(`文章「${item.title}」：摘要失敗（${error instanceof Error ? error.name : 'unknown error'}）`);
+      if (!response.text) {
+        console.warn(`文章「${item.title}」：沒有任何回應內容`);
+        return null;
       }
+      const parsed = SummarySchema.safeParse(JSON.parse(response.text));
+      if (!parsed.success || !parsed.data.headline.trim() || !parsed.data.summary.trim()) return null;
+      return { headline: parsed.data.headline.trim(), summary: parsed.data.summary.trim() };
+    } catch (error) {
+      // 只印錯誤訊息，不印任何可能含 key 的內容（API key 不會出現在錯誤訊息中）
+      console.warn(`文章「${item.title}」：摘要失敗（${error instanceof Error ? error.message : 'unknown error'}）`);
       return null;
     }
   };
@@ -99,9 +93,9 @@ const [feedXml, previous] = await Promise.all([
 ]);
 const items = feedXml ? parseFeed(feedXml) : [];
 
-const hasKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
-if (!hasKey) console.warn('沒有設定 ANTHROPIC_API_KEY：不產生新摘要，沿用上一份');
-const summarizer = hasKey ? makeSummarizer(new Anthropic()) : null;
+const apiKey = process.env.GEMINI_API_KEY?.trim();
+if (!apiKey) console.warn('沒有設定 GEMINI_API_KEY：不產生新摘要，沿用上一份');
+const summarizer = apiKey ? makeSummarizer(new GoogleGenAI({ apiKey })) : null;
 
 const news = await buildNews({
   items,
@@ -117,6 +111,6 @@ if (!news) {
   await writeFile(OUTPUT, `${JSON.stringify(news)}\n`);
   console.log(`新聞摘要：共 ${news.items.length} 篇，更新於 ${news.updatedAt ?? '（從未更新）'}`);
   if (summarizer) {
-    console.log(`Claude 用量：輸入 ${summarizer.usage.input} tokens、輸出 ${summarizer.usage.output} tokens`);
+    console.log(`Gemini 用量：輸入 ${summarizer.usage.input} tokens、輸出 ${summarizer.usage.output} tokens`);
   }
 }
