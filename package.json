@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "update-list": "node build/update-malicious-list.ts"
+    "update-list": "node build/update-malicious-list.ts",
+    "update-news": "node build/update-news.ts"
   },
   "dependencies": {
     "react": "^19.3.1",
@@ -18,6 +19,7 @@
     "react-router": "^8.5.1"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^1.12.0",
     "@tailwindcss/vite": "^4.3.5",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -30,6 +32,7 @@
     "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "zod": "^4.6.7"
   }
 }
