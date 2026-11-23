@@ -157,6 +157,24 @@ describe('buildNews', () => {
     expect(news?.items.map((item) => item.title)).toEqual(['Article 1', 'Old article', 'Older article']);
   });
 
+  it('這次的篇數已足夠 → 不放上一份的文章，即使上一份的比較新', async () => {
+    const previous: NewsFile = {
+      updatedAt: '2026-11-22T00:00:00.000Z',
+      items: [
+        {
+          headline: '較新的舊摘要',
+          summary: '摘要',
+          title: 'Newer old article',
+          url: 'https://thehackernews.com/2026/11/newer-old.html',
+          publishedAt: '2026-11-22T23:00:00.000Z',
+        },
+      ],
+    };
+    const { summarize } = fakeSummarize();
+    const news = await buildNews({ items: feed(3), previous, now, summarize, limit: 3 });
+    expect(news?.items.map((item) => item.title)).toEqual(['Article 1', 'Article 2', 'Article 3']);
+  });
+
   describe('產生摘要失敗時保留前一天的資料', () => {
     const previous: NewsFile = {
       updatedAt: '2026-11-22T00:00:00.000Z',

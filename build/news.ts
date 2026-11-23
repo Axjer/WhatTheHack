@@ -41,17 +41,18 @@ export async function buildNews({ items, previous, now, summarize, limit }: Buil
     news.push({ ...summary, title: item.title, url: item.url, publishedAt: item.publishedAt });
   }
   if (!news.length || (needed > 0 && generated === 0)) return previous;
-  // 部分失敗時不讓頁面變少：用上一份的文章補足篇數，再依發布時間由新到舊排
+  // 部分失敗時不讓頁面變少：只用上一份的文章補「不足的篇數」（不擠掉這次挑中的），再依發布時間由新到舊排
   const included = new Set(news.map((item) => item.url));
-  const filler = (previous?.items ?? []).filter((item) => !included.has(item.url));
-  const merged = [...news, ...filler]
-    .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
-    .slice(0, limit);
+  const filler = (previous?.items ?? [])
+    .filter((item) => !included.has(item.url))
+    .slice(0, Math.max(0, limit - news.length));
+  const merged = [...news, ...filler].sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
   return { updatedAt: now.toISOString(), items: merged };
 }
 
-/** 只挑這段時間內發布的新聞 */
-const SELECTION_WINDOW_MS = 24 * 60 * 60 * 1000;
+/** 只挑這段時間內發布的新聞（小時）；挑選的提示詞也用這個數字 */
+export const SELECTION_WINDOW_HOURS = 24;
+const SELECTION_WINDOW_MS = SELECTION_WINDOW_HOURS * 60 * 60 * 1000;
 
 type SelectTopItemsInput = {
   /** RSS 解析出的文章，由新到舊 */
@@ -59,8 +60,8 @@ type SelectTopItemsInput = {
   now: Date;
   /** 最多挑幾篇 */
   limit: number;
-  /** 從候選文章挑出最重要的幾篇，回傳候選陣列的索引（依重要性排）；失敗回傳 null */
-  choose: (candidates: FeedItem[]) => Promise<number[] | null>;
+  /** 從候選文章挑出最重要的 limit 篇，回傳候選陣列的索引（依重要性排）；失敗回傳 null */
+  choose: (candidates: FeedItem[], limit: number) => Promise<number[] | null>;
 };
 
 /**
@@ -76,7 +77,7 @@ export async function selectTopItems({ items, now, limit, choose }: SelectTopIte
   if (candidates.length <= limit) return candidates;
 
   const picks = new Set<number>();
-  for (const index of (await choose(candidates)) ?? []) {
+  for (const index of (await choose(candidates, limit)) ?? []) {
     if (picks.size >= limit) break;
     if (Number.isInteger(index) && index >= 0 && index < candidates.length) picks.add(index);
   }
