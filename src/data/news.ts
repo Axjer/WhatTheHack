@@ -1,9 +1,15 @@
+/** 新聞分類：由 AI 從這幾類挑一個，顯示在摘要卡左上角 */
+export const NEWS_CATEGORIES = ['漏洞', '惡意程式', '詐騙', '資料外洩', '駭客攻擊'] as const;
+export type NewsCategory = (typeof NEWS_CATEGORIES)[number];
+
 /** 一篇新聞的 AI 白話摘要 */
 export type NewsSummary = {
   /** 白話中文標題 */
   headline: string;
   /** 2–3 句白話中文摘要 */
   summary: string;
+  /** 分類；加入分類前產生的舊摘要沒有這個欄位 */
+  category?: NewsCategory;
 };
 
 export type NewsItem = NewsSummary & {

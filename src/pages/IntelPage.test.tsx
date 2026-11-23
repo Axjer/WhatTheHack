@@ -76,6 +76,19 @@ describe('最新情資頁：AI 白話新聞摘要', () => {
     }
   });
 
+  it('有分類的摘要卡顯示分類標籤；舊資料沒有分類就不顯示', async () => {
+    fakeNews = {
+      ...twoArticles,
+      items: [{ ...twoArticles.items[0], category: '漏洞' }, twoArticles.items[1]],
+    };
+    renderPage();
+    const withCategory = (await screen.findByRole('heading', { name: 'ASP.NET 舊套件漏洞遭駭客利用' })).closest('article')!;
+    const withoutCategory = screen.getByRole('heading', { name: '新型惡意程式鎖定銀行' }).closest('article')!;
+
+    expect(within(withCategory).getByText('漏洞')).toBeInTheDocument();
+    expect(within(withoutCategory).queryByText(/^(漏洞|惡意程式|詐騙|資料外洩|駭客攻擊)$/)).not.toBeInTheDocument();
+  });
+
   it('區塊標題顯示篇數，卡片下方提醒 AI 摘要可能有誤', async () => {
     renderPage();
     expect(await screen.findByRole('heading', { name: '2 篇焦點新聞' })).toBeInTheDocument();

@@ -21,6 +21,7 @@ function NewsJsonLd({ items }: { items: NewsItem[] }) {
       datePublished: item.publishedAt,
       inLanguage: 'zh-TW',
       isBasedOn: item.url,
+      ...(item.category && { articleSection: item.category }),
     })),
   };
   return (
@@ -52,7 +53,10 @@ function NewsSkeleton() {
     <div aria-hidden="true" className="grid gap-4 lg:grid-cols-3 lg:gap-6">
       {[0, 1, 2].map((key) => (
         <div key={key} className={cardClass}>
-          <div className="skeleton h-6 w-16 rounded-full" />
+          <div className="flex justify-between">
+            <div className="skeleton h-7 w-14 rounded-full" />
+            <div className="skeleton h-7 w-20 rounded-full" />
+          </div>
           <div className="skeleton mt-4 h-6 w-4/5" />
           <div className="skeleton mt-4 h-4 w-full" />
           <div className="skeleton mt-2 h-4 w-full" />
@@ -71,10 +75,11 @@ function NewsCard({ item, now }: { item: NewsItem; now: number }) {
   const headingId = useId();
   return (
     <article aria-labelledby={headingId} className={cardClass}>
-      {/* AI 摘要的標示：主色字＋帶藍淺底，不用燈號顏色 */}
-      <span className="self-start rounded-full bg-surface-sunken px-3 py-0.5 text-sm font-medium text-primary">
-        AI 摘要
-      </span>
+      {/* 分類（主色實心）與 AI 摘要標示（主色字＋帶藍淺底）；都只用主色深藍，紅黃灰留給判定結果 */}
+      <div className="flex items-center gap-2 text-sm font-medium">
+        {item.category && <span className="rounded-full bg-primary px-3 py-1 text-surface-raised">{item.category}</span>}
+        <span className="ml-auto rounded-full bg-surface-sunken px-3 py-1 text-primary">AI 摘要</span>
+      </div>
       <h3 id={headingId} className="mt-4 text-xl leading-snug font-bold">
         {item.headline}
       </h3>
