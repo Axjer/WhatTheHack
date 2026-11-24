@@ -7,11 +7,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** 資料超過這個時間沒更新就提醒（惡意網址清單、最新情資） */
 export const STALE_AFTER_MS = 2 * DAY_MS;
 
-/**
- * 每日更新的時間，對應 .github/workflows/deploy.yml 的排程（00:00 UTC）。改排程時要一起改。
- */
-export const DAILY_UPDATE_TIME = '每天早上 8 點';
-
 const dateTimeFormat = new Intl.DateTimeFormat('en-CA', {
   timeZone: TIME_ZONE,
   year: 'numeric',

@@ -95,6 +95,11 @@ describe('最新情資頁：AI 白話新聞摘要', () => {
     expect(screen.getByText('AI 摘要可能有誤，請以原文為準。')).toBeInTheDocument();
   });
 
+  it('說明寫「每日更新」，不寫確切時間（GitHub 排程常會延遲）', async () => {
+    renderPage();
+    expect(await screen.findByText('用白話整理最近的資安新聞，每日更新。')).toBeInTheDocument();
+  });
+
   it('以台灣時間顯示「情資更新於：YYYY-MM-DD HH:MM」', async () => {
     renderPage();
     expect(await screen.findByText('情資更新於：2026-11-23 08:00')).toBeInTheDocument();
@@ -169,7 +174,7 @@ describe('最新情資頁：AI 白話新聞摘要', () => {
   it('還沒有任何新聞 → 說明什麼時候會有', async () => {
     fakeNews = { updatedAt: null, items: [] };
     renderPage();
-    expect(await screen.findByText(/還沒有整理好的新聞/)).toBeInTheDocument();
+    expect(await screen.findByText('目前還沒有整理好的新聞。網站每日會自動更新，請稍後再回來看看。')).toBeInTheDocument();
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
   });
 });
