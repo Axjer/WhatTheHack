@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { KevFile } from '../data/kev';
 import type { NewsFile } from '../data/news';
 import IntelPage from './IntelPage';
 
@@ -14,6 +15,18 @@ vi.mock('../data/loadNews', () => ({
     return Promise.resolve(fakeNews);
   },
 }));
+
+/** 假的 KEV 統計檔 */
+let fakeKev: KevFile | 'fails';
+
+vi.mock('../data/loadKev', () => ({
+  loadKev: () => (fakeKev === 'fails' ? Promise.reject(new Error('HTTP 404')) : Promise.resolve(fakeKev)),
+}));
+
+/** 剛更新過的 KEV 統計 */
+function freshKev(added: number, topVendors: string[]): KevFile {
+  return { updatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), added, topVendors };
+}
 
 const twoArticles: NewsFile = {
   updatedAt: '2026-11-23T00:00:00.000Z',
@@ -45,6 +58,59 @@ function renderPage() {
 
 beforeEach(() => {
   fakeNews = twoArticles;
+  fakeKev = freshKev(0, []);
+});
+
+describe('最新情資頁：已遭利用漏洞的白話橫幅（CISA KEV）', () => {
+  const banner = () => screen.findByRole('region', { name: '已遭駭客利用的漏洞' });
+
+  it('有新增 → 一行說明數量、主要影響的廠商，以及該怎麼做', async () => {
+    fakeKev = freshKev(6, ['Microsoft', 'Apple']);
+    renderPage();
+    expect(await banner()).toHaveTextContent(
+      '過去 7 天新增 6 個已遭駭客利用的漏洞，主要影響 Microsoft、Apple，請更新電腦。',
+    );
+  });
+
+  it('橫幅在新聞之前', async () => {
+    fakeKev = freshKev(6, ['Microsoft', 'Apple']);
+    renderPage();
+    const kev = await banner();
+    const newsHeading = await screen.findByRole('heading', { name: '2 篇焦點新聞' });
+    expect(kev.compareDocumentPosition(newsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('沒有新增 → 用白話說明，並提醒平常開啟自動更新', async () => {
+    renderPage();
+    expect(await banner()).toHaveTextContent('過去 7 天沒有新增已遭駭客利用的漏洞。平常仍建議開啟電腦與手機的自動更新。');
+  });
+
+  it('超過 48 小時沒更新 → 照樣顯示，並提醒數字可能不是最新的', async () => {
+    fakeKev = { updatedAt: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(), added: 6, topVendors: ['Microsoft'] };
+    renderPage();
+    const kev = await banner();
+    expect(kev).toHaveTextContent('過去 7 天新增 6 個已遭駭客利用的漏洞，主要影響 Microsoft，請更新電腦。');
+    expect(kev).toHaveTextContent('統計已超過 48 小時沒有更新，數字可能不是最新的。');
+  });
+
+  it('48 小時內更新過 → 不顯示過期提醒', async () => {
+    fakeKev = freshKev(6, ['Microsoft']);
+    renderPage();
+    expect(await banner()).not.toHaveTextContent('數字可能不是最新的');
+  });
+
+  it('從未更新或載入失敗 → 不顯示橫幅，新聞照常顯示', async () => {
+    fakeKev = { updatedAt: null, added: 0, topVendors: [] };
+    const { unmount } = renderPage();
+    await screen.findAllByRole('article');
+    expect(screen.queryByRole('region', { name: '已遭駭客利用的漏洞' })).not.toBeInTheDocument();
+    unmount();
+
+    fakeKev = 'fails';
+    renderPage();
+    await screen.findAllByRole('article');
+    expect(screen.queryByRole('region', { name: '已遭駭客利用的漏洞' })).not.toBeInTheDocument();
+  });
 });
 
 describe('最新情資頁：AI 白話新聞摘要', () => {

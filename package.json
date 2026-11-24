@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "update-list": "node build/update-malicious-list.ts",
-    "update-news": "node build/update-news.ts"
+    "update-news": "node build/update-news.ts",
+    "update-kev": "node build/update-kev.ts"
   },
   "dependencies": {
     "react": "^19.3.1",
