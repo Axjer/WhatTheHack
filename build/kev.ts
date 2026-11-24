@@ -11,14 +11,22 @@ const CatalogSchema = z.object({
   vulnerabilities: z.array(z.object({ dateAdded: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })).min(1),
 });
 
-/** 往前推 daysAgo 天的 UTC 日期 YYYY-MM-DD */
-function utcDate(now: Date, daysAgo: number): string {
-  return new Date(now.getTime() - daysAgo * DAY_MS).toISOString().slice(0, 10);
+/** CISA 位在美東：dateAdded 是美東的日期 */
+const usEasternDay = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/New_York',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+/** 從 today（YYYY-MM-DD）往前推 daysAgo 天的日期；純日期運算，以 UTC 午夜計算避免時區干擾 */
+function daysBefore(today: string, daysAgo: number): string {
+  return new Date(Date.parse(`${today}T00:00:00Z`) - daysAgo * DAY_MS).toISOString().slice(0, 10);
 }
 
 /**
  * 統計近 7 天（含今天）每天新增的筆數與前 7 天的總數。
- * 以 UTC 日期比較：CISA 的 dateAdded 是美國的日期，排程在 UTC 22:07 執行時美國還是同一天。
+ * 「今天」以美東日期為準：不論排程或推上 main 的部署在什麼時間執行，視窗都對齊 CISA 的日期。
  * 不是 KEV 目錄時回傳 null。
  */
 export function summarizeKev(catalog: unknown, now: Date): KevFile | null {
@@ -28,13 +36,14 @@ export function summarizeKev(catalog: unknown, now: Date): KevFile | null {
   const counts = new Map<string, number>();
   for (const { dateAdded } of parsed.data.vulnerabilities) counts.set(dateAdded, (counts.get(dateAdded) ?? 0) + 1);
 
+  const today = usEasternDay.format(now);
   const daily = Array.from({ length: KEV_WINDOW_DAYS }, (_, index) => {
-    const date = utcDate(now, KEV_WINDOW_DAYS - 1 - index);
+    const date = daysBefore(today, KEV_WINDOW_DAYS - 1 - index);
     return { date, count: counts.get(date) ?? 0 };
   });
   let previousWeek = 0;
   for (let daysAgo = KEV_WINDOW_DAYS; daysAgo < KEV_WINDOW_DAYS * 2; daysAgo++) {
-    previousWeek += counts.get(utcDate(now, daysAgo)) ?? 0;
+    previousWeek += counts.get(daysBefore(today, daysAgo)) ?? 0;
   }
   return { updatedAt: now.toISOString(), daily, previousWeek };
 }

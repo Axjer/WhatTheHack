@@ -36,7 +36,7 @@ function Bars({ daily }: { daily: KevDay[] }) {
         {daily.map(({ date, count }) => (
           <div key={date} className="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
             <span className="text-sm font-medium tabular-nums">{count}</span>
-            {/* 高度依比例；扣掉數字標籤的空間，最高的一根剛好頂到圖表上緣 */}
+            {/* 高度依比例；1.75rem 預留給上方的數字（text-sm 行高 1.25rem + gap-1.5），改字級或間距時要一起改 */}
             <div
               className="w-full rounded-t bg-primary"
               style={{ height: count ? `max(4px, calc((100% - 1.75rem) * ${count / max}))` : 0 }}
@@ -78,7 +78,8 @@ export default function KevTrend({ kev, now }: { kev: KevFile; now: number }) {
         <Bars daily={kev.daily} />
         <p className="mt-6">{conclusion(total, kev.previousWeek)}</p>
         {isStale(kev.updatedAt, now) && (
-          <p className="mt-2 text-sm text-text-secondary">統計已超過 48 小時沒有更新，數字可能不是最新的。</p>
+          // 與新聞的過期提醒同樣式：主要文字色加帶藍淺底（紅黃灰只留給判定結果）
+          <p className="mt-3 rounded-lg bg-surface-sunken px-3 py-2 text-sm">統計已超過 48 小時沒有更新，數字可能不是最新的。</p>
         )}
       </div>
       <p className="mt-4 text-sm text-text-secondary">資料每日統計一次，圖表數據來自 CISA 已被利用漏洞清單。</p>

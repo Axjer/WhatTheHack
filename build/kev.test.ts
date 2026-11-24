@@ -45,6 +45,12 @@ describe('summarizeKev', () => {
     });
   });
 
+  it('以美東日期當「今天」：UTC 凌晨部署（例如推上 main）時美國還是前一天，視窗不往後移', () => {
+    const earlyUtc = new Date('2026-11-24T02:00:00.000Z'); // 美東 11/23 21:00
+    const kev = summarizeKev(catalog(['2026-11-23', '2026-11-17']), earlyUtc);
+    expect(kev?.daily).toEqual(week([1, 0, 0, 0, 0, 0, 1]));
+  });
+
   it('近 7 天都沒有新增 → 每天都是 0', () => {
     expect(summarizeKev(catalog(['2026-11-01']), now)?.daily).toEqual(week([0, 0, 0, 0, 0, 0, 0]));
   });
