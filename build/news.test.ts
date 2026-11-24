@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import type { NewsFile } from '../src/data/news.ts';
-import { buildNews, extractArticleText, parseFeed, type FeedItem } from './news.ts';
+import { buildNews, extractArticleText, parseFeed, selectTopItems, type FeedItem } from './news.ts';
 
 const feedXml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel><title>The Hacker News</title>
@@ -157,6 +157,24 @@ describe('buildNews', () => {
     expect(news?.items.map((item) => item.title)).toEqual(['Article 1', 'Old article', 'Older article']);
   });
 
+  it('這次的篇數已足夠 → 不放上一份的文章，即使上一份的比較新', async () => {
+    const previous: NewsFile = {
+      updatedAt: '2026-11-22T00:00:00.000Z',
+      items: [
+        {
+          headline: '較新的舊摘要',
+          summary: '摘要',
+          title: 'Newer old article',
+          url: 'https://thehackernews.com/2026/11/newer-old.html',
+          publishedAt: '2026-11-22T23:00:00.000Z',
+        },
+      ],
+    };
+    const { summarize } = fakeSummarize();
+    const news = await buildNews({ items: feed(3), previous, now, summarize, limit: 3 });
+    expect(news?.items.map((item) => item.title)).toEqual(['Article 1', 'Article 2', 'Article 3']);
+  });
+
   describe('產生摘要失敗時保留前一天的資料', () => {
     const previous: NewsFile = {
       updatedAt: '2026-11-22T00:00:00.000Z',
@@ -185,5 +203,67 @@ describe('buildNews', () => {
       const { summarize } = fakeSummarize(['Article 1']);
       expect(await buildNews({ items: feed(1), previous: null, now, summarize, limit: 1 })).toBeNull();
     });
+  });
+});
+
+describe('selectTopItems：從過去 24 小時的新聞挑出最重要的幾篇', () => {
+  const now = new Date('2026-11-23T00:00:00Z');
+  /** 每篇間隔 4 小時，由新到舊：第 1 篇 1 小時前、第 6 篇 21 小時前、第 7 篇 25 小時前 */
+  const feed: FeedItem[] = Array.from({ length: 7 }, (_, i) => ({
+    title: `Article ${i + 1}`,
+    url: `https://thehackernews.com/2026/11/article-${i + 1}.html`,
+    publishedAt: new Date(now.getTime() - (1 + 4 * i) * 60 * 60 * 1000).toISOString(),
+    excerpt: `Excerpt ${i + 1}`,
+  }));
+  const titles = (items: FeedItem[]) => items.map((item) => item.title);
+
+  it('只把過去 24 小時內的新聞交給挑選，挑中的依發布時間由新到舊排', async () => {
+    const offered: string[][] = [];
+    const picked = await selectTopItems({
+      items: feed,
+      now,
+      limit: 3,
+      choose: async (candidates) => {
+        offered.push(titles(candidates));
+        return [4, 0, 2];
+      },
+    });
+    expect(offered).toEqual([['Article 1', 'Article 2', 'Article 3', 'Article 4', 'Article 5', 'Article 6']]);
+    expect(titles(picked)).toEqual(['Article 1', 'Article 3', 'Article 5']);
+  });
+
+  it('24 小時內不超過指定篇數 → 全部收下，不必挑選', async () => {
+    let called = false;
+    const picked = await selectTopItems({
+      items: feed.slice(4),
+      now,
+      limit: 3,
+      choose: async () => {
+        called = true;
+        return [0];
+      },
+    });
+    expect(titles(picked)).toEqual(['Article 5', 'Article 6']);
+    expect(called).toBe(false);
+  });
+
+  it('24 小時內沒有新聞 → 空陣列', async () => {
+    const picked = await selectTopItems({ items: feed.slice(6), now, limit: 3, choose: async () => [0] });
+    expect(picked).toEqual([]);
+  });
+
+  it('挑選失敗 → 改取最新的幾篇', async () => {
+    const picked = await selectTopItems({ items: feed, now, limit: 3, choose: async () => null });
+    expect(titles(picked)).toEqual(['Article 1', 'Article 2', 'Article 3']);
+  });
+
+  it('挑選結果有超出範圍或重複的編號 → 忽略，不足的篇數用最新的補上', async () => {
+    const picked = await selectTopItems({ items: feed, now, limit: 3, choose: async () => [5, 5, 99, -1] });
+    expect(titles(picked)).toEqual(['Article 1', 'Article 2', 'Article 6']);
+  });
+
+  it('挑太多 → 只取前面指定的篇數', async () => {
+    const picked = await selectTopItems({ items: feed, now, limit: 3, choose: async () => [5, 4, 3, 2, 1] });
+    expect(titles(picked)).toEqual(['Article 4', 'Article 5', 'Article 6']);
   });
 });
