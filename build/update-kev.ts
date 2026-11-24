@@ -1,6 +1,6 @@
 /**
- * 每日更新 CISA KEV（已遭駭客利用的漏洞目錄）統計：過去 7 天新增的數量與受影響最多的廠商，
- * 寫到 public/data/kev.json，給最新情資頁的白話橫幅使用。由部署 workflow 在 build 前執行（`npm run update-kev`）。
+ * 每日更新 CISA 已被利用漏洞清單（KEV）統計：近 7 天每天新增的筆數，
+ * 寫到 public/data/kev.json，給最新情資頁的趨勢圖使用。由部署 workflow 在 build 前執行（`npm run update-kev`）。
  *
  * 環境變數：
  * - PREVIOUS_KEV_URL：目前已部署的統計檔網址，作為「上一份」。沒有時改讀本機的輸出檔。
@@ -20,8 +20,7 @@ function isKevFile(value: unknown): value is KevFile {
   return (
     typeof value === 'object' &&
     value !== null &&
-    typeof (value as KevFile).added === 'number' &&
-    Array.isArray((value as KevFile).topVendors)
+    Array.isArray((value as KevFile).daily)
   );
 }
 
@@ -50,8 +49,8 @@ if (!kev) {
 } else {
   await writeFile(OUTPUT, `${JSON.stringify(kev)}\n`);
   if (kev.cisaFailedSince) console.warn(`CISA KEV 自 ${kev.cisaFailedSince} 起抓不到`);
+  const days = kev.daily.map(({ date, count }) => `${date.slice(5)} ${count}`).join('、');
   console.log(
-    `KEV（更新於 ${kev.updatedAt ?? '從未更新'}）：過去 ${KEV_WINDOW_DAYS} 天新增 ${kev.added} 個，` +
-      `主要廠商：${kev.topVendors.join('、') || '（無）'}`,
+    `KEV（更新於 ${kev.updatedAt}）：近 ${KEV_WINDOW_DAYS} 天每日新增 ${days}`,
   );
 }

@@ -43,7 +43,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PREVIOUS_NEWS_URL: ${{ steps.pages.outputs.base_url }}/data/news.json
-      # 抓 CISA KEV，統計過去 7 天新增的已遭利用漏洞與主要廠商；抓取失敗時沿用目前已部署的統計
+      # 抓 CISA 已被利用漏洞清單，統計近 7 天每天的新增筆數；抓不到時第一天沿用已部署的統計，隔天改抓 GitHub 官方副本
       - run: npm run update-kev
         env:
           PREVIOUS_KEV_URL: ${{ steps.pages.outputs.base_url }}/data/kev.json
