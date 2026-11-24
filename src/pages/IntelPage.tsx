@@ -104,31 +104,37 @@ function NewsCard({ item, now }: { item: NewsItem; now: number }) {
 /**
  * CISA KEV 的一行白話橫幅：過去 7 天新增幾個已遭駭客利用的漏洞、主要影響哪些廠商。
  * 不放 CVE 編號與 CVSS 分數；不用燈號顏色，只用主色深藍的深淺階層。
- * 從未更新或超過 48 小時沒更新時不顯示：「過去 7 天」的數字已經不準。
+ * 從未更新（佔位檔）時不顯示；超過 48 小時沒更新時照樣顯示，並提醒數字可能不是最新的。
  */
 function KevBanner({ kev, now }: { kev: KevFile; now: number }) {
-  if (!kev.updatedAt || isStale(kev.updatedAt, now)) return null;
+  if (!kev.updatedAt) return null;
   const vendors = kev.topVendors.join('、');
+  const stale = isStale(kev.updatedAt, now);
   return (
     <section
       aria-label="已遭駭客利用的漏洞"
       className="mt-8 flex items-start gap-4 rounded-xl border border-primary/15 bg-surface-sunken p-4 md:items-center md:px-6"
     >
-      {/* 更新的循環箭頭：對應「請盡快更新」 */}
+      {/* 更新的循環箭頭：對應「請更新電腦」 */}
       <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-surface-raised">
         <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
           <path d="M15.5 8A6 6 0 0 0 4.6 6.5M4.5 12a6 6 0 0 0 10.9 1.5" />
           <path d="M15.75 3.5V8h-4.5M4.25 16.5V12h4.5" />
         </svg>
       </span>
-      {kev.added > 0 ? (
-        <p>
-          過去 {KEV_WINDOW_DAYS} 天新增 <strong className="font-bold text-primary">{kev.added} 個</strong>
-          已遭駭客利用的漏洞{vendors && `，主要影響 ${vendors}`}，請更新電腦。
-        </p>
-      ) : (
-        <p>過去 {KEV_WINDOW_DAYS} 天沒有新增已遭駭客利用的漏洞。平常仍建議開啟電腦與手機的自動更新。</p>
-      )}
+      <div>
+        {kev.added > 0 ? (
+          <p>
+            過去 {KEV_WINDOW_DAYS} 天新增 <strong className="font-bold text-primary">{kev.added} 個</strong>
+            已遭駭客利用的漏洞{vendors && `，主要影響 ${vendors}`}，請更新電腦。
+          </p>
+        ) : (
+          <p>過去 {KEV_WINDOW_DAYS} 天沒有新增已遭駭客利用的漏洞。平常仍建議開啟電腦與手機的自動更新。</p>
+        )}
+        {stale && (
+          <p className="mt-1 text-sm text-text-secondary">統計已超過 48 小時沒有更新，數字可能不是最新的。</p>
+        )}
+      </div>
     </section>
   );
 }

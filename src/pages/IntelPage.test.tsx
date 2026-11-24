@@ -85,11 +85,18 @@ describe('最新情資頁：已遭利用漏洞的白話橫幅（CISA KEV）', ()
     expect(await banner()).toHaveTextContent('過去 7 天沒有新增已遭駭客利用的漏洞。平常仍建議開啟電腦與手機的自動更新。');
   });
 
-  it('超過 48 小時沒更新 → 不顯示橫幅（「過去 7 天」的數字已經不準）', async () => {
+  it('超過 48 小時沒更新 → 照樣顯示，並提醒數字可能不是最新的', async () => {
     fakeKev = { updatedAt: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(), added: 6, topVendors: ['Microsoft'] };
     renderPage();
-    await screen.findAllByRole('article');
-    expect(screen.queryByRole('region', { name: '已遭駭客利用的漏洞' })).not.toBeInTheDocument();
+    const kev = await banner();
+    expect(kev).toHaveTextContent('過去 7 天新增 6 個已遭駭客利用的漏洞，主要影響 Microsoft，請更新電腦。');
+    expect(kev).toHaveTextContent('統計已超過 48 小時沒有更新，數字可能不是最新的。');
+  });
+
+  it('48 小時內更新過 → 不顯示過期提醒', async () => {
+    fakeKev = freshKev(6, ['Microsoft']);
+    renderPage();
+    expect(await banner()).not.toHaveTextContent('數字可能不是最新的');
   });
 
   it('從未更新或載入失敗 → 不顯示橫幅，新聞照常顯示', async () => {
