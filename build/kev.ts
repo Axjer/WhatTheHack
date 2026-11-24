@@ -1,44 +1,42 @@
 /**
- * CISA KEV（已遭駭客利用的漏洞目錄）統計模組：算出過去 7 天新增的數量與受影響最多的廠商。
+ * CISA 已被利用漏洞清單（KEV）統計模組：算出近 7 天每天新增的筆數，以及前 7 天的總數。
  * 純函式，不連網；抓取由 update-kev.ts 負責。
  */
 import { z } from 'zod';
 import { KEV_WINDOW_DAYS, type KevFile } from '../src/data/kev.ts';
 import { DAY_MS, taipeiDay } from '../src/time.ts';
 
-/** 橫幅最多列幾個廠商 */
-const MAX_VENDORS = 2;
-
 /** 只驗證用得到的欄位；目錄是空的視為格式不對（正式目錄有上千筆） */
 const CatalogSchema = z.object({
-  vulnerabilities: z
-    .array(z.object({ dateAdded: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), vendorProject: z.string() }))
-    .min(1),
+  vulnerabilities: z.array(z.object({ dateAdded: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })).min(1),
 });
 
+/** 往前推 daysAgo 天的 UTC 日期 YYYY-MM-DD */
+function utcDate(now: Date, daysAgo: number): string {
+  return new Date(now.getTime() - daysAgo * DAY_MS).toISOString().slice(0, 10);
+}
+
 /**
- * 統計過去 7 天（含今天，以 UTC 日期比較；CISA 的 dateAdded 是美國的日期）新增的漏洞。
+ * 統計近 7 天（含今天）每天新增的筆數與前 7 天的總數。
+ * 以 UTC 日期比較：CISA 的 dateAdded 是美國的日期，排程在 UTC 22:07 執行時美國還是同一天。
  * 不是 KEV 目錄時回傳 null。
  */
 export function summarizeKev(catalog: unknown, now: Date): KevFile | null {
   const parsed = CatalogSchema.safeParse(catalog);
   if (!parsed.success) return null;
 
-  // YYYY-MM-DD 可以直接用字串比較大小
-  const since = new Date(now.getTime() - (KEV_WINDOW_DAYS - 1) * DAY_MS).toISOString().slice(0, 10);
-  const recent = parsed.data.vulnerabilities.filter((item) => item.dateAdded >= since);
-
   const counts = new Map<string, number>();
-  for (const { vendorProject } of recent) {
-    const vendor = vendorProject.trim();
-    if (vendor) counts.set(vendor, (counts.get(vendor) ?? 0) + 1);
-  }
-  const topVendors = [...counts]
-    .sort(([a, countA], [b, countB]) => countB - countA || a.localeCompare(b, 'en'))
-    .slice(0, MAX_VENDORS)
-    .map(([vendor]) => vendor);
+  for (const { dateAdded } of parsed.data.vulnerabilities) counts.set(dateAdded, (counts.get(dateAdded) ?? 0) + 1);
 
-  return { updatedAt: now.toISOString(), added: recent.length, topVendors };
+  const daily = Array.from({ length: KEV_WINDOW_DAYS }, (_, index) => {
+    const date = utcDate(now, KEV_WINDOW_DAYS - 1 - index);
+    return { date, count: counts.get(date) ?? 0 };
+  });
+  let previousWeek = 0;
+  for (let daysAgo = KEV_WINDOW_DAYS; daysAgo < KEV_WINDOW_DAYS * 2; daysAgo++) {
+    previousWeek += counts.get(utcDate(now, daysAgo)) ?? 0;
+  }
+  return { updatedAt: now.toISOString(), daily, previousWeek };
 }
 
 type UpdateKevInput = {

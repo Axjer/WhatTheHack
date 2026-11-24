@@ -3,53 +3,50 @@ import { describe, expect, it } from 'vitest';
 import type { KevFile } from '../src/data/kev.ts';
 import { summarizeKev, updateKev } from './kev.ts';
 
-/** 每日流程在台灣早上 06:07（UTC 前一天 22:07）執行 */
+/** 每日流程在台灣早上 06:07（UTC 前一天 22:07）執行；這天的 UTC 日期是 11/23 */
 const now = new Date('2026-11-23T22:07:00.000Z');
 
-function catalog(entries: [dateAdded: string, vendorProject: string][]) {
+/** 假的 KEV 目錄：每個日期代表一筆新增 */
+function catalog(dates: string[]) {
   return {
     title: 'CISA Catalog of Known Exploited Vulnerabilities',
-    vulnerabilities: entries.map(([dateAdded, vendorProject], index) => ({
+    vulnerabilities: dates.map((dateAdded, index) => ({
       cveID: `CVE-2026-${1000 + index}`,
-      vendorProject,
-      product: 'Some Product',
+      vendorProject: 'Microsoft',
+      product: 'Windows',
       dateAdded,
     })),
   };
 }
 
+/** 11/17 到 11/23 每天的筆數 */
+function week(counts: number[]) {
+  return counts.map((count, index) => ({ date: `2026-11-${17 + index}`, count }));
+}
+
 describe('summarizeKev', () => {
-  it('計算過去 7 天（含今天）新增的數量，以及受影響最多的兩個廠商', () => {
+  it('近 7 天（含今天）每天新增的筆數，由舊到新；以及前 7 天的總數', () => {
     const kev = summarizeKev(
       catalog([
-        ['2026-11-23', 'Microsoft'],
-        ['2026-11-21', 'Apple'],
-        ['2026-11-20', 'Microsoft'],
-        ['2026-11-19', 'Microsoft'],
-        ['2026-11-17', 'Apple'],
-        ['2026-11-17', 'Fortinet'],
-        ['2026-11-16', 'Microsoft'], // 8 天前，不算
-        ['2026-10-01', 'Google'],
+        '2026-11-23',
+        '2026-11-23',
+        '2026-11-21',
+        '2026-11-17',
+        '2026-11-16', // 前 7 天
+        '2026-11-10', // 前 7 天的第一天
+        '2026-11-09', // 更早，不算
       ]),
       now,
     );
-    expect(kev).toEqual({ updatedAt: '2026-11-23T22:07:00.000Z', added: 6, topVendors: ['Microsoft', 'Apple'] });
-  });
-
-  it('同樣多次時依廠商名稱排序；只有一個廠商就只列一個', () => {
-    expect(summarizeKev(catalog([['2026-11-22', 'Zimbra'], ['2026-11-22', 'Cisco'], ['2026-11-22', 'Ivanti']]), now)?.topVendors).toEqual([
-      'Cisco',
-      'Ivanti',
-    ]);
-    expect(summarizeKev(catalog([['2026-11-22', 'Apple'], ['2026-11-21', 'Apple']]), now)?.topVendors).toEqual(['Apple']);
-  });
-
-  it('過去 7 天沒有新增 → 數量 0、沒有廠商', () => {
-    expect(summarizeKev(catalog([['2026-11-01', 'Microsoft']]), now)).toEqual({
+    expect(kev).toEqual({
       updatedAt: '2026-11-23T22:07:00.000Z',
-      added: 0,
-      topVendors: [],
+      daily: week([1, 0, 0, 0, 1, 0, 2]),
+      previousWeek: 2,
     });
+  });
+
+  it('近 7 天都沒有新增 → 每天都是 0', () => {
+    expect(summarizeKev(catalog(['2026-11-01']), now)?.daily).toEqual(week([0, 0, 0, 0, 0, 0, 0]));
   });
 
   it('不是 KEV 目錄（例如錯誤頁或格式改變）→ null，讓更新腳本沿用上一份', () => {
@@ -60,99 +57,78 @@ describe('summarizeKev', () => {
 });
 
 describe('updateKev：CISA 抓不到時，第一天沿用上一份，連續第二天才改抓 GitHub 上的官方副本', () => {
-  const cisaCatalog = catalog([['2026-11-23', 'Microsoft']]);
-  const mirrorCatalog = catalog([['2026-11-23', 'Apple']]);
-  const yesterday: KevFile = { updatedAt: '2026-11-22T22:07:00.000Z', added: 3, topVendors: ['Cisco'] };
+  const cisaCatalog = catalog(['2026-11-23']);
+  const mirrorCatalog = catalog(['2026-11-23', '2026-11-23']);
+  const fromCisa = week([0, 0, 0, 0, 0, 0, 1]);
+  const fromMirror = week([0, 0, 0, 0, 0, 0, 2]);
+  const yesterday: KevFile = { updatedAt: '2026-11-22T22:07:00.000Z', daily: week([3, 0, 0, 0, 0, 0, 0]), previousWeek: 5 };
 
-  /** 記錄有沒有抓副本 */
+  /** 回傳兩個抓取函式，並記錄副本被抓了幾次 */
   function sources(cisa: unknown, mirror: unknown) {
     const calls = { mirror: 0 };
-    return {
-      calls,
+    const fetchers = {
       fetchCisa: async () => cisa,
       fetchMirror: async () => {
         calls.mirror++;
         return mirror;
       },
     };
+    return { calls, fetchers };
   }
 
   it('CISA 抓得到 → 用 CISA 的資料，不抓副本，失敗紀錄清掉', async () => {
-    const { calls, ...fetchers } = sources(cisaCatalog, mirrorCatalog);
+    const { calls, fetchers } = sources(cisaCatalog, mirrorCatalog);
     const kev = await updateKev({ ...fetchers, previous: { ...yesterday, cisaFailedSince: '2026-11-21T22:07:00.000Z' }, now });
-    expect(kev).toEqual({ updatedAt: '2026-11-23T22:07:00.000Z', added: 1, topVendors: ['Microsoft'], cisaFailedSince: null });
+    expect(kev).toEqual({ updatedAt: '2026-11-23T22:07:00.000Z', daily: fromCisa, previousWeek: 0, cisaFailedSince: null });
     expect(calls.mirror).toBe(0);
   });
 
   it('第一天抓不到 → 沿用上一份（更新時間不變），記下開始抓不到的時間，不抓副本', async () => {
-    const { calls, ...fetchers } = sources(null, mirrorCatalog);
+    const { calls, fetchers } = sources(null, mirrorCatalog);
     const kev = await updateKev({ ...fetchers, previous: yesterday, now });
     expect(kev).toEqual({ ...yesterday, cisaFailedSince: '2026-11-23T22:07:00.000Z' });
     expect(calls.mirror).toBe(0);
   });
 
   it('同一天內再次部署（例如推上 main）仍抓不到 → 還不算第二天，繼續沿用上一份', async () => {
-    const { calls, ...fetchers } = sources(null, mirrorCatalog);
+    const { calls, fetchers } = sources(null, mirrorCatalog);
     const previous = { ...yesterday, cisaFailedSince: '2026-11-23T18:00:00.000Z' };
     expect(await updateKev({ ...fetchers, previous, now })).toEqual(previous);
     expect(calls.mirror).toBe(0);
   });
 
   it('連續第二天抓不到 → 改用副本的資料，保留開始抓不到的時間', async () => {
-    const { ...fetchers } = sources(null, mirrorCatalog);
+    const { fetchers } = sources(null, mirrorCatalog);
     const kev = await updateKev({ ...fetchers, previous: { ...yesterday, cisaFailedSince: '2026-11-22T22:07:00.000Z' }, now });
     expect(kev).toEqual({
       updatedAt: '2026-11-23T22:07:00.000Z',
-      added: 1,
-      topVendors: ['Apple'],
+      daily: fromMirror,
+      previousWeek: 0,
       cisaFailedSince: '2026-11-22T22:07:00.000Z',
     });
   });
 
   it('連續第二天抓不到，副本也抓不到 → 沿用上一份', async () => {
-    const { ...fetchers } = sources(null, null);
+    const { fetchers } = sources(null, null);
     const previous = { ...yesterday, cisaFailedSince: '2026-11-22T22:07:00.000Z' };
     expect(await updateKev({ ...fetchers, previous, now })).toEqual(previous);
   });
 
   it('沒有上一份可沿用 → 直接改抓副本；副本也抓不到就回傳 null', async () => {
-    expect(await updateKev({ ...sources(null, mirrorCatalog), previous: null, now })).toEqual({
-      updatedAt: '2026-11-23T22:07:00.000Z',
-      added: 1,
-      topVendors: ['Apple'],
-      cisaFailedSince: '2026-11-23T22:07:00.000Z',
-    });
-    expect(await updateKev({ ...sources(null, null), previous: null, now })).toBeNull();
+    expect((await updateKev({ ...sources(null, mirrorCatalog).fetchers, previous: null, now }))?.daily).toEqual(fromMirror);
+    expect(await updateKev({ ...sources(null, null).fetchers, previous: null, now })).toBeNull();
   });
-});
 
-describe('updateKev：上一份是從未更新過的佔位檔', () => {
-  it('視為沒有上一份 → 直接改抓副本', async () => {
-    const placeholder: KevFile = { updatedAt: null, added: 0, topVendors: [] };
-    const kev = await updateKev({
-      fetchCisa: async () => null,
-      fetchMirror: async () => catalog([['2026-11-23', 'Apple']]),
-      previous: placeholder,
-      now,
-    });
-    expect(kev?.topVendors).toEqual(['Apple']);
+  it('上一份是從未更新過的佔位檔 → 視為沒有上一份，直接改抓副本', async () => {
+    const placeholder: KevFile = { updatedAt: null, daily: [], previousWeek: 0 };
+    const kev = await updateKev({ ...sources(null, mirrorCatalog).fetchers, previous: placeholder, now });
+    expect(kev?.daily).toEqual(fromMirror);
   });
-});
 
-describe('updateKev：以台灣日期判斷「連續第二天」', () => {
   it('第一次失敗在延遲的排程（台灣 11/23 中午），隔天早上的排程只隔 18 小時，仍算第二天 → 改抓副本', async () => {
-    const previous: KevFile = {
-      updatedAt: '2026-11-22T04:00:00.000Z',
-      added: 3,
-      topVendors: ['Cisco'],
-      cisaFailedSince: '2026-11-23T04:00:00.000Z',
-    };
-    const kev = await updateKev({
-      fetchCisa: async () => null,
-      fetchMirror: async () => catalog([['2026-11-23', 'Apple']]),
-      previous,
-      now, // 台灣 11/24 06:07
-    });
-    expect(kev?.topVendors).toEqual(['Apple']);
+    const previous = { ...yesterday, cisaFailedSince: '2026-11-23T04:00:00.000Z' };
+    // now 是台灣 11/24 06:07
+    const kev = await updateKev({ ...sources(null, mirrorCatalog).fetchers, previous, now });
+    expect(kev?.daily).toEqual(fromMirror);
   });
 });

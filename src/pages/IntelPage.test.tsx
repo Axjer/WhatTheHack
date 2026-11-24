@@ -23,9 +23,13 @@ vi.mock('../data/loadKev', () => ({
   loadKev: () => (fakeKev === 'fails' ? Promise.reject(new Error('HTTP 404')) : Promise.resolve(fakeKev)),
 }));
 
-/** 剛更新過的 KEV 統計 */
-function freshKev(added: number, topVendors: string[]): KevFile {
-  return { updatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), added, topVendors };
+/** 剛更新過的 KEV 統計：daily 是 11/17（二）到 11/23（一）每天的筆數 */
+function freshKev(counts: number[], previousWeek: number): KevFile {
+  return {
+    updatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    daily: counts.map((count, index) => ({ date: `2026-11-${17 + index}`, count })),
+    previousWeek,
+  };
 }
 
 const twoArticles: NewsFile = {
@@ -58,57 +62,90 @@ function renderPage() {
 
 beforeEach(() => {
   fakeNews = twoArticles;
-  fakeKev = freshKev(0, []);
+  fakeKev = freshKev([0, 0, 0, 0, 0, 0, 0], 0);
 });
 
-describe('最新情資頁：已遭利用漏洞的白話橫幅（CISA KEV）', () => {
-  const banner = () => screen.findByRole('region', { name: '已遭駭客利用的漏洞' });
+describe('最新情資頁：已被利用漏洞趨勢（CISA KEV）', () => {
+  const trend = () => screen.findByRole('region', { name: '已被利用漏洞趨勢' });
 
-  it('有新增 → 一行說明數量、主要影響的廠商，以及該怎麼做', async () => {
-    fakeKev = freshKev(6, ['Microsoft', 'Apple']);
+  it('長條圖逐日列出近 7 天的新增筆數（含星期與日期）', async () => {
+    fakeKev = freshKev([1, 0, 3, 2, 0, 0, 4], 5);
     renderPage();
-    expect(await banner()).toHaveTextContent(
-      '過去 7 天新增 6 個已遭駭客利用的漏洞，主要影響 Microsoft、Apple，請更新電腦。',
+    const section = await trend();
+    expect(within(section).getByRole('heading', { name: '近 7 天新增已被利用漏洞' })).toBeInTheDocument();
+    expect(within(section).getByRole('img')).toHaveAccessibleName(
+      '近 7 天每日新增已被利用漏洞：11/17（二）1 筆、11/18（三）0 筆、11/19（四）3 筆、11/20（五）2 筆、11/21（六）0 筆、11/22（日）0 筆、11/23（一）4 筆',
     );
   });
 
-  it('橫幅在新聞之前', async () => {
-    fakeKev = freshKev(6, ['Microsoft', 'Apple']);
+  it('結論：比前 7 天多 → 說多幾筆，建議優先檢查軟體更新', async () => {
+    fakeKev = freshKev([1, 0, 3, 2, 0, 0, 4], 5);
     renderPage();
-    const kev = await banner();
-    const newsHeading = await screen.findByRole('heading', { name: '2 篇焦點新聞' });
-    expect(kev.compareDocumentPosition(newsHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(await trend()).toHaveTextContent('結論：近 7 天新增 10 筆，比前 7 天多 5 筆，建議優先檢查軟體更新。');
   });
 
-  it('沒有新增 → 用白話說明，並提醒平常開啟自動更新', async () => {
+  it('結論：比前 7 天少、或一樣多 → 照實說', async () => {
+    fakeKev = freshKev([1, 0, 0, 0, 0, 0, 1], 5);
+    const { unmount } = renderPage();
+    expect(await trend()).toHaveTextContent('結論：近 7 天新增 2 筆，比前 7 天少 3 筆，仍建議定期檢查軟體更新。');
+    unmount();
+
+    fakeKev = freshKev([1, 0, 0, 0, 0, 0, 1], 2);
     renderPage();
-    expect(await banner()).toHaveTextContent('過去 7 天沒有新增已遭駭客利用的漏洞。平常仍建議開啟電腦與手機的自動更新。');
+    expect(await trend()).toHaveTextContent('結論：近 7 天新增 2 筆，和前 7 天一樣多，建議定期檢查軟體更新。');
+  });
+
+  it('近 7 天沒有新增 → 用白話說明，並提醒平常開啟自動更新', async () => {
+    fakeKev = freshKev([0, 0, 0, 0, 0, 0, 0], 3);
+    renderPage();
+    expect(await trend()).toHaveTextContent('結論：近 7 天沒有新增已被利用的漏洞。平常仍建議開啟電腦與手機的自動更新。');
+  });
+
+  it('說明資料來源與更新頻率；不顯示 CVE 編號', async () => {
+    fakeKev = freshKev([1, 0, 3, 2, 0, 0, 4], 5);
+    renderPage();
+    const section = await trend();
+    expect(section).toHaveTextContent('資料每日統計一次，圖表數據來自 CISA 已被利用漏洞清單。');
+    expect(section).not.toHaveTextContent(/CVE-/);
+  });
+
+  it('趨勢圖在新聞之後', async () => {
+    fakeKev = freshKev([1, 0, 3, 2, 0, 0, 4], 5);
+    renderPage();
+    const section = await trend();
+    const newsHeading = await screen.findByRole('heading', { name: '2 篇焦點新聞' });
+    expect(newsHeading.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('超過 48 小時沒更新 → 照樣顯示，並提醒數字可能不是最新的', async () => {
-    fakeKev = { updatedAt: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(), added: 6, topVendors: ['Microsoft'] };
+    fakeKev = { ...freshKev([1, 0, 3, 2, 0, 0, 4], 5), updatedAt: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString() };
     renderPage();
-    const kev = await banner();
-    expect(kev).toHaveTextContent('過去 7 天新增 6 個已遭駭客利用的漏洞，主要影響 Microsoft，請更新電腦。');
-    expect(kev).toHaveTextContent('統計已超過 48 小時沒有更新，數字可能不是最新的。');
+    expect(await trend()).toHaveTextContent('統計已超過 48 小時沒有更新，數字可能不是最新的。');
   });
 
   it('48 小時內更新過 → 不顯示過期提醒', async () => {
-    fakeKev = freshKev(6, ['Microsoft']);
+    fakeKev = freshKev([1, 0, 3, 2, 0, 0, 4], 5);
     renderPage();
-    expect(await banner()).not.toHaveTextContent('數字可能不是最新的');
+    expect(await trend()).not.toHaveTextContent('數字可能不是最新的');
   });
 
-  it('從未更新或載入失敗 → 不顯示橫幅，新聞照常顯示', async () => {
-    fakeKev = { updatedAt: null, added: 0, topVendors: [] };
+  it('從未更新（佔位檔）或載入失敗 → 不顯示趨勢圖，新聞照常顯示', async () => {
+    fakeKev = { updatedAt: null, daily: [], previousWeek: 0 };
     const { unmount } = renderPage();
     await screen.findAllByRole('article');
-    expect(screen.queryByRole('region', { name: '已遭駭客利用的漏洞' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '已被利用漏洞趨勢' })).not.toBeInTheDocument();
     unmount();
 
     fakeKev = 'fails';
     renderPage();
     await screen.findAllByRole('article');
+    expect(screen.queryByRole('region', { name: '已被利用漏洞趨勢' })).not.toBeInTheDocument();
+  });
+
+  it('新聞上方不再有一行橫幅', async () => {
+    fakeKev = freshKev([1, 0, 3, 2, 0, 0, 4], 5);
+    renderPage();
+    await trend();
     expect(screen.queryByRole('region', { name: '已遭駭客利用的漏洞' })).not.toBeInTheDocument();
   });
 });

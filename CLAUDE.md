@@ -99,7 +99,8 @@ Issue 記錄在 GitHub 的 Axjer/WhatTheHack 儲存庫（使用 `gh` CLI 操作�
 ### 最新情資
 
 - **新聞**：由 GitHub Actions 請 AI 以資安專家的角度，從 The Hacker News 過去 24 小時的新聞挑出最重要、最具影響力的 3 篇，再呼叫 Gemini 3.5 Flash-Lite（`gemini-3.5-flash-lite`）產生 2–3 句白話摘要，提示詞限定只根據原文。每篇標示「AI 摘要」並附原文連結。API key 存於 GitHub Secrets，不得寫入程式碼。摘要區塊加上 JSON-LD（`NewsArticle`）。
-- **CISA KEV**：新聞上方一行白話橫幅，例：「本週新增 N 個已遭駭客利用的漏洞，主要影響 Microsoft、Apple，請更新電腦」。不使用燈號顏色。
+- **已被利用漏洞趨勢（CISA KEV）**：新聞下方的長條圖，顯示近 7 天每天新增的筆數（數字標在長條上方，下方標星期與日期），附一句白話結論（與前 7 天比較，例：「結論：近 7 天新增 N 筆，比前 7 天多 X 筆，建議優先檢查軟體更新。」），卡片下方註明「資料每日統計一次，圖表數據來自 CISA 已被利用漏洞清單。」只用主色深藍，不使用燈號顏色；不顯示 CVE 編號與 CVSS 分數。超過 48 小時未更新時照樣顯示並提醒。
+- **KEV 抓取失敗**：CISA 抓不到的第一天沿用前一天的資料；台灣時間隔天仍抓不到，改抓 CISA 在 GitHub 上的官方副本（cisagov/kev-data）。
 
 ### 首頁
 
