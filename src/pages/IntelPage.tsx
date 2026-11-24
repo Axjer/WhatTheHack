@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import type { NewsFile, NewsItem } from '../data/news';
 import { loadNews } from '../data/loadNews';
 import { textLinkClass } from '../styles';
-import { DAILY_UPDATE_TIME, formatRelativeDay, formatTaipeiTime, isStale } from '../time';
+import { formatRelativeDay, formatTaipeiTime, isStale } from '../time';
 
 /** 新聞來源（目前只有一個；標在區塊說明與卡片底部） */
 const NEWS_SOURCE = 'The Hacker News';
@@ -128,7 +128,7 @@ export default function IntelPage() {
     <div className="mx-auto w-full max-w-6xl px-4 py-10 md:px-6 md:py-16">
       <div className="max-w-4xl">
         <h1>最新情資</h1>
-        <p className="mt-4 text-text-secondary">用白話整理最近的資安新聞，{DAILY_UPDATE_TIME}更新。</p>
+        <p className="mt-4 text-text-secondary">用白話整理最近的資安新聞，每日更新。</p>
         {news?.updatedAt && (
           <p className="mt-1 text-sm text-text-secondary">情資更新於：{formatTaipeiTime(news.updatedAt)}</p>
         )}
@@ -149,7 +149,7 @@ export default function IntelPage() {
         )}
         {news && !news.items.length && (
           <p className="max-w-4xl rounded-lg bg-surface-sunken px-4 py-3">
-            目前還沒有整理好的新聞。{DAILY_UPDATE_TIME}會自動更新，請稍後再回來看看。
+            目前還沒有整理好的新聞。網站每日會自動更新，請稍後再回來看看。
           </p>
         )}
         {news && news.items.length > 0 && (
