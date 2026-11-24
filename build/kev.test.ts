@@ -125,3 +125,34 @@ describe('updateKev：CISA 抓不到時，第一天沿用上一份，連續第�
     expect(await updateKev({ ...sources(null, null), previous: null, now })).toBeNull();
   });
 });
+
+describe('updateKev：上一份是從未更新過的佔位檔', () => {
+  it('視為沒有上一份 → 直接改抓副本', async () => {
+    const placeholder: KevFile = { updatedAt: null, added: 0, topVendors: [] };
+    const kev = await updateKev({
+      fetchCisa: async () => null,
+      fetchMirror: async () => catalog([['2026-11-23', 'Apple']]),
+      previous: placeholder,
+      now,
+    });
+    expect(kev?.topVendors).toEqual(['Apple']);
+  });
+});
+
+describe('updateKev：以台灣日期判斷「連續第二天」', () => {
+  it('第一次失敗在延遲的排程（台灣 11/23 中午），隔天早上的排程只隔 18 小時，仍算第二天 → 改抓副本', async () => {
+    const previous: KevFile = {
+      updatedAt: '2026-11-22T04:00:00.000Z',
+      added: 3,
+      topVendors: ['Cisco'],
+      cisaFailedSince: '2026-11-23T04:00:00.000Z',
+    };
+    const kev = await updateKev({
+      fetchCisa: async () => null,
+      fetchMirror: async () => catalog([['2026-11-23', 'Apple']]),
+      previous,
+      now, // 台灣 11/24 06:07
+    });
+    expect(kev?.topVendors).toEqual(['Apple']);
+  });
+});

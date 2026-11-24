@@ -4,7 +4,7 @@
  */
 import { z } from 'zod';
 import { KEV_WINDOW_DAYS, type KevFile } from '../src/data/kev.ts';
-import { DAY_MS } from '../src/time.ts';
+import { DAY_MS, taipeiDay } from '../src/time.ts';
 
 /** 橫幅最多列幾個廠商 */
 const MAX_VENDORS = 2;
@@ -41,12 +41,6 @@ export function summarizeKev(catalog: unknown, now: Date): KevFile | null {
   return { updatedAt: now.toISOString(), added: recent.length, topVendors };
 }
 
-/**
- * 「連續第二天」的門檻：排程每天跑一次，但推上 main 也會部署；
- * 距離第一次抓不到超過 20 小時才算第二天，同一天內的重新部署不算。
- */
-const SECOND_DAY_AFTER_MS = 20 * 60 * 60 * 1000;
-
 type UpdateKevInput = {
   /** 抓 CISA 官方的 KEV 目錄（已解析的 JSON）；失敗回傳 null */
   fetchCisa: () => Promise<unknown>;
@@ -60,19 +54,22 @@ type UpdateKevInput = {
 /**
  * 決定這次的 KEV 統計：
  * 1. CISA 抓得到 → 用 CISA，清掉失敗紀錄。
- * 2. 抓不到的第一天（或同一天內再次部署）→ 沿用上一份，記下開始抓不到的時間。
- * 3. 連續第二天抓不到，或沒有上一份可沿用 → 改抓 GitHub 上的官方副本；副本也失敗就沿用上一份。
+ * 2. 抓不到的第一天（或台灣時間同一天內再次部署）→ 沿用上一份，記下開始抓不到的時間。
+ * 3. 台灣時間的隔天仍抓不到，或沒有上一份可沿用（包括從未更新過的佔位檔） → 改抓 GitHub 上的官方副本；副本也失敗就沿用上一份。
  * 什麼都沒有時回傳 null（保留現有檔案，不覆蓋）。
  */
 export async function updateKev({ fetchCisa, fetchMirror, previous, now }: UpdateKevInput): Promise<KevFile | null> {
   const fromCisa = summarizeKev(await fetchCisa(), now);
   if (fromCisa) return { ...fromCisa, cisaFailedSince: null };
 
+  // 從未更新過的佔位檔沒有資料可沿用，視同沒有上一份
+  const usable = previous?.updatedAt ? previous : null;
   const failedSince = previous?.cisaFailedSince ?? now.toISOString();
-  const secondDay = now.getTime() - Date.parse(failedSince) >= SECOND_DAY_AFTER_MS;
-  if (previous && !secondDay) return { ...previous, cisaFailedSince: failedSince };
+  // 以台灣日期判斷「第二天」：同一天內的重新部署（例如推上 main）不算，排程延遲幾小時也不影響
+  const secondDay = taipeiDay(failedSince) !== taipeiDay(now.getTime());
+  if (usable && !secondDay) return { ...usable, cisaFailedSince: failedSince };
 
   const fromMirror = summarizeKev(await fetchMirror(), now);
   if (fromMirror) return { ...fromMirror, cisaFailedSince: failedSince };
-  return previous && { ...previous, cisaFailedSince: failedSince };
+  return usable && { ...usable, cisaFailedSince: failedSince };
 }
