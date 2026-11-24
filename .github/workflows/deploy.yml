@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-  # 每天 22:07 UTC（台灣時間 06:07）更新惡意網址清單與新聞並重新部署。
+  # 每天 22:07 UTC（台灣時間 06:07）更新惡意網址清單、新聞與 KEV 統計並重新部署。
   # 避開整點：GitHub 排程在整點最擁擠，常延遲好幾個小時。實際執行時間不保證，所以頁面只寫「每日更新」。
   schedule:
     - cron: '7 22 * * *'
@@ -43,6 +43,10 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PREVIOUS_NEWS_URL: ${{ steps.pages.outputs.base_url }}/data/news.json
+      # 抓 CISA KEV，統計過去 7 天新增的已遭利用漏洞與主要廠商；抓取失敗時沿用目前已部署的統計
+      - run: npm run update-kev
+        env:
+          PREVIOUS_KEV_URL: ${{ steps.pages.outputs.base_url }}/data/kev.json
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
