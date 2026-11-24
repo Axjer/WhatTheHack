@@ -2,7 +2,7 @@
 const TIME_ZONE = 'Asia/Taipei';
 
 /** 一天（台灣沒有日光節約時間，一天固定 24 小時） */
-const DAY_MS = 24 * 60 * 60 * 1000;
+export const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** 資料超過這個時間沒更新就提醒（惡意網址清單、最新情資） */
 export const STALE_AFTER_MS = 2 * DAY_MS;

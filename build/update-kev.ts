@@ -8,7 +8,7 @@
  * 任何失敗都不會讓這個腳本失敗：抓取失敗時沿用上一份，網站照常部署。
  */
 import { writeFile } from 'node:fs/promises';
-import type { KevFile } from '../src/data/kev.ts';
+import { KEV_WINDOW_DAYS, type KevFile } from '../src/data/kev.ts';
 import { fetchText, readPrevious } from './fetch.ts';
 import { summarizeKev } from './kev.ts';
 
@@ -50,7 +50,7 @@ for (const { label, url } of SOURCES) {
 
 if (kev) {
   await writeFile(OUTPUT, `${JSON.stringify(kev)}\n`);
-  console.log(`KEV：過去 7 天新增 ${kev.added} 個，主要廠商：${kev.topVendors.join('、') || '（無）'}`);
+  console.log(`KEV：過去 ${KEV_WINDOW_DAYS} 天新增 ${kev.added} 個，主要廠商：${kev.topVendors.join('、') || '（無）'}`);
 } else {
   const previous = await readPrevious('上一份 KEV 統計檔', process.env.PREVIOUS_KEV_URL, OUTPUT, isKevFile);
   if (previous) {

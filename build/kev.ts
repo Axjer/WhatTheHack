@@ -4,10 +4,10 @@
  */
 import { z } from 'zod';
 import { KEV_WINDOW_DAYS, type KevFile } from '../src/data/kev.ts';
+import { DAY_MS } from '../src/time.ts';
 
 /** 橫幅最多列幾個廠商 */
 const MAX_VENDORS = 2;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** 只驗證用得到的欄位；目錄是空的視為格式不對（正式目錄有上千筆） */
 const CatalogSchema = z.object({
