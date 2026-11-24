@@ -68,7 +68,7 @@ describe('最新情資頁：已遭利用漏洞的白話橫幅（CISA KEV）', ()
     fakeKev = freshKev(6, ['Microsoft', 'Apple']);
     renderPage();
     expect(await banner()).toHaveTextContent(
-      '過去 7 天新增 6 個已遭駭客利用的漏洞，主要影響 Microsoft、Apple 的產品。有在用的話，請盡快更新。',
+      '過去 7 天新增 6 個已遭駭客利用的漏洞，主要影響 Microsoft、Apple，請更新電腦。',
     );
   });
 

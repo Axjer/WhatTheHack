@@ -124,7 +124,7 @@ function KevBanner({ kev, now }: { kev: KevFile; now: number }) {
       {kev.added > 0 ? (
         <p>
           過去 {KEV_WINDOW_DAYS} 天新增 <strong className="font-bold text-primary">{kev.added} 個</strong>
-          已遭駭客利用的漏洞{vendors && `，主要影響 ${vendors} 的產品`}。有在用的話，請盡快更新。
+          已遭駭客利用的漏洞{vendors && `，主要影響 ${vendors}`}，請更新電腦。
         </p>
       ) : (
         <p>過去 {KEV_WINDOW_DAYS} 天沒有新增已遭駭客利用的漏洞。平常仍建議開啟電腦與手機的自動更新。</p>

@@ -40,3 +40,39 @@ export function summarizeKev(catalog: unknown, now: Date): KevFile | null {
 
   return { updatedAt: now.toISOString(), added: recent.length, topVendors };
 }
+
+/**
+ * 「連續第二天」的門檻：排程每天跑一次，但推上 main 也會部署；
+ * 距離第一次抓不到超過 20 小時才算第二天，同一天內的重新部署不算。
+ */
+const SECOND_DAY_AFTER_MS = 20 * 60 * 60 * 1000;
+
+type UpdateKevInput = {
+  /** 抓 CISA 官方的 KEV 目錄（已解析的 JSON）；失敗回傳 null */
+  fetchCisa: () => Promise<unknown>;
+  /** 抓 CISA 在 GitHub 上的官方副本；失敗回傳 null */
+  fetchMirror: () => Promise<unknown>;
+  /** 上一份統計檔；沒有時為 null */
+  previous: KevFile | null;
+  now: Date;
+};
+
+/**
+ * 決定這次的 KEV 統計：
+ * 1. CISA 抓得到 → 用 CISA，清掉失敗紀錄。
+ * 2. 抓不到的第一天（或同一天內再次部署）→ 沿用上一份，記下開始抓不到的時間。
+ * 3. 連續第二天抓不到，或沒有上一份可沿用 → 改抓 GitHub 上的官方副本；副本也失敗就沿用上一份。
+ * 什麼都沒有時回傳 null（保留現有檔案，不覆蓋）。
+ */
+export async function updateKev({ fetchCisa, fetchMirror, previous, now }: UpdateKevInput): Promise<KevFile | null> {
+  const fromCisa = summarizeKev(await fetchCisa(), now);
+  if (fromCisa) return { ...fromCisa, cisaFailedSince: null };
+
+  const failedSince = previous?.cisaFailedSince ?? now.toISOString();
+  const secondDay = now.getTime() - Date.parse(failedSince) >= SECOND_DAY_AFTER_MS;
+  if (previous && !secondDay) return { ...previous, cisaFailedSince: failedSince };
+
+  const fromMirror = summarizeKev(await fetchMirror(), now);
+  if (fromMirror) return { ...fromMirror, cisaFailedSince: failedSince };
+  return previous && { ...previous, cisaFailedSince: failedSince };
+}

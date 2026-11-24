@@ -12,4 +12,9 @@ export type KevFile = {
   added: number;
   /** 受影響最多的廠商（最多兩個），依次數由多到少 */
   topVendors: string[];
+  /**
+   * CISA 官方來源從什麼時候開始抓不到（ISO 8601）；抓得到時為 null。
+   * 只給每日更新流程判斷是否已連續兩天抓不到、該改抓 GitHub 上的官方副本，頁面不使用。
+   */
+  cisaFailedSince?: string | null;
 };
