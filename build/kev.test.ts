@@ -25,23 +25,20 @@ function week(counts: number[]) {
 }
 
 describe('summarizeKev', () => {
-  it('近 7 天（含今天）每天新增的筆數，由舊到新；以及前 7 天的總數', () => {
+  it('近 7 天（含今天）每天新增的筆數，由舊到新', () => {
     const kev = summarizeKev(
       catalog([
         '2026-11-23',
         '2026-11-23',
         '2026-11-21',
         '2026-11-17',
-        '2026-11-16', // 前 7 天
-        '2026-11-10', // 前 7 天的第一天
-        '2026-11-09', // 更早，不算
+        '2026-11-16', // 8 天前，不算
       ]),
       now,
     );
     expect(kev).toEqual({
       updatedAt: '2026-11-23T22:07:00.000Z',
       daily: week([1, 0, 0, 0, 1, 0, 2]),
-      previousWeek: 2,
     });
   });
 
@@ -67,7 +64,7 @@ describe('updateKev：CISA 抓不到時，第一天沿用上一份，連續第�
   const mirrorCatalog = catalog(['2026-11-23', '2026-11-23']);
   const fromCisa = week([0, 0, 0, 0, 0, 0, 1]);
   const fromMirror = week([0, 0, 0, 0, 0, 0, 2]);
-  const yesterday: KevFile = { updatedAt: '2026-11-22T22:07:00.000Z', daily: week([3, 0, 0, 0, 0, 0, 0]), previousWeek: 5 };
+  const yesterday: KevFile = { updatedAt: '2026-11-22T22:07:00.000Z', daily: week([3, 0, 0, 0, 0, 0, 0]) };
 
   /** 回傳兩個抓取函式，並記錄副本被抓了幾次 */
   function sources(cisa: unknown, mirror: unknown) {
@@ -85,7 +82,7 @@ describe('updateKev：CISA 抓不到時，第一天沿用上一份，連續第�
   it('CISA 抓得到 → 用 CISA 的資料，不抓副本，失敗紀錄清掉', async () => {
     const { calls, fetchers } = sources(cisaCatalog, mirrorCatalog);
     const kev = await updateKev({ ...fetchers, previous: { ...yesterday, cisaFailedSince: '2026-11-21T22:07:00.000Z' }, now });
-    expect(kev).toEqual({ updatedAt: '2026-11-23T22:07:00.000Z', daily: fromCisa, previousWeek: 0, cisaFailedSince: null });
+    expect(kev).toEqual({ updatedAt: '2026-11-23T22:07:00.000Z', daily: fromCisa, cisaFailedSince: null });
     expect(calls.mirror).toBe(0);
   });
 
@@ -109,7 +106,6 @@ describe('updateKev：CISA 抓不到時，第一天沿用上一份，連續第�
     expect(kev).toEqual({
       updatedAt: '2026-11-23T22:07:00.000Z',
       daily: fromMirror,
-      previousWeek: 0,
       cisaFailedSince: '2026-11-22T22:07:00.000Z',
     });
   });
@@ -126,7 +122,7 @@ describe('updateKev：CISA 抓不到時，第一天沿用上一份，連續第�
   });
 
   it('上一份是從未更新過的佔位檔 → 視為沒有上一份，直接改抓副本', async () => {
-    const placeholder: KevFile = { updatedAt: null, daily: [], previousWeek: 0 };
+    const placeholder: KevFile = { updatedAt: null, daily: [] };
     const kev = await updateKev({ ...sources(null, mirrorCatalog).fetchers, previous: placeholder, now });
     expect(kev?.daily).toEqual(fromMirror);
   });

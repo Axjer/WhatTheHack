@@ -1,5 +1,5 @@
 /**
- * CISA 已被利用漏洞清單（KEV）統計模組：算出近 7 天每天新增的筆數，以及前 7 天的總數。
+ * CISA 已被利用漏洞清單（KEV）統計模組：算出近 7 天每天新增的筆數。
  * 純函式，不連網；抓取由 update-kev.ts 負責。
  */
 import { z } from 'zod';
@@ -25,7 +25,7 @@ function daysBefore(today: string, daysAgo: number): string {
 }
 
 /**
- * 統計近 7 天（含今天）每天新增的筆數與前 7 天的總數。
+ * 統計近 7 天（含今天）每天新增的筆數。
  * 「今天」以美東日期為準：不論排程或推上 main 的部署在什麼時間執行，視窗都對齊 CISA 的日期。
  * 不是 KEV 目錄時回傳 null。
  */
@@ -41,11 +41,7 @@ export function summarizeKev(catalog: unknown, now: Date): KevFile | null {
     const date = daysBefore(today, KEV_WINDOW_DAYS - 1 - index);
     return { date, count: counts.get(date) ?? 0 };
   });
-  let previousWeek = 0;
-  for (let daysAgo = KEV_WINDOW_DAYS; daysAgo < KEV_WINDOW_DAYS * 2; daysAgo++) {
-    previousWeek += counts.get(daysBefore(today, daysAgo)) ?? 0;
-  }
-  return { updatedAt: now.toISOString(), daily, previousWeek };
+  return { updatedAt: now.toISOString(), daily };
 }
 
 type UpdateKevInput = {

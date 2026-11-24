@@ -2,33 +2,16 @@ import { useId } from 'react';
 import { KEV_WINDOW_DAYS, type KevDay, type KevFile } from '../data/kev';
 import { isStale } from '../time';
 
-const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
-
-/** 11/17 與星期（CISA 的日期是純日期，不需換時區） */
-function dayLabel(date: string) {
+/** YYYY-MM-DD → 11/17（CISA 的日期是純日期，不需換時區） */
+function monthDay(date: string): string {
   const [, month, day] = date.split('-').map(Number);
-  return { monthDay: `${month}/${day}`, weekday: WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()] };
+  return `${month}/${day}`;
 }
 
-/** 一句白話結論：跟前 7 天比較，並說該怎麼做 */
-function conclusion(total: number, previousWeek: number): string {
-  if (total === 0) return `結論：近 ${KEV_WINDOW_DAYS} 天沒有新增已被利用的漏洞。平常仍建議開啟電腦與手機的自動更新。`;
-  const diff = total - previousWeek;
-  const head = `結論：近 ${KEV_WINDOW_DAYS} 天新增 ${total} 筆，`;
-  if (diff > 0) return `${head}比前 ${KEV_WINDOW_DAYS} 天多 ${diff} 筆，建議優先檢查軟體更新。`;
-  if (diff < 0) return `${head}比前 ${KEV_WINDOW_DAYS} 天少 ${-diff} 筆，仍建議定期檢查軟體更新。`;
-  return `${head}和前 ${KEV_WINDOW_DAYS} 天一樣多，建議定期檢查軟體更新。`;
-}
-
-/** 長條圖：單一數列只用主色深藍（紅黃灰只留給判定結果），數字直接標在長條上方 */
+/** 長條圖：單一數列只用主色深藍（紅黃灰只留給判定結果），數字直接標在長條上方、日期標在下方 */
 function Bars({ daily }: { daily: KevDay[] }) {
   const max = Math.max(...daily.map((day) => day.count), 1);
-  const description = daily
-    .map(({ date, count }) => {
-      const { monthDay, weekday } = dayLabel(date);
-      return `${monthDay}（${weekday}）${count} 筆`;
-    })
-    .join('、');
+  const description = daily.map(({ date, count }) => `${monthDay(date)} ${count} 筆`).join('、');
 
   return (
     <figure role="img" aria-label={`近 ${KEV_WINDOW_DAYS} 天每日新增已被利用漏洞：${description}`} className="mt-6">
@@ -45,29 +28,24 @@ function Bars({ daily }: { daily: KevDay[] }) {
         ))}
       </div>
       <div aria-hidden="true" className="mt-2 flex gap-2 md:gap-4">
-        {daily.map(({ date }) => {
-          const { monthDay, weekday } = dayLabel(date);
-          return (
-            <div key={date} className="flex-1 text-center leading-tight">
-              <div className="text-sm">{weekday}</div>
-              <div className="text-xs text-text-secondary tabular-nums">{monthDay}</div>
-            </div>
-          );
-        })}
+        {daily.map(({ date }) => (
+          <div key={date} className="flex-1 text-center text-sm text-text-secondary tabular-nums">
+            {monthDay(date)}
+          </div>
+        ))}
       </div>
     </figure>
   );
 }
 
 /**
- * 最新情資頁的「已被利用漏洞趨勢」：近 7 天每天新增幾筆（CISA 已被利用漏洞清單），附一句結論。
+ * 最新情資頁的「已被利用漏洞趨勢」：近 7 天每天新增幾筆（CISA 已被利用漏洞清單）。
  * 不放 CVE 編號與 CVSS 分數；不用燈號顏色，只用主色深藍。
  * 從未更新（佔位檔）時不顯示；超過 48 小時沒更新時照樣顯示，並提醒數字可能不是最新的。
  */
 export default function KevTrend({ kev, now }: { kev: KevFile; now: number }) {
   const headingId = useId();
   if (!kev.updatedAt || !kev.daily.length) return null;
-  const total = kev.daily.reduce((sum, day) => sum + day.count, 0);
 
   return (
     <section aria-labelledby={headingId} className="mt-16">
@@ -76,10 +54,9 @@ export default function KevTrend({ kev, now }: { kev: KevFile; now: number }) {
       <div className="mt-6 rounded-xl bg-surface-raised p-5 shadow-sm md:p-6">
         <h3 className="text-xl font-bold">近 {KEV_WINDOW_DAYS} 天新增已被利用漏洞</h3>
         <Bars daily={kev.daily} />
-        <p className="mt-6">{conclusion(total, kev.previousWeek)}</p>
         {isStale(kev.updatedAt, now) && (
           // 與新聞的過期提醒同樣式：主要文字色加帶藍淺底（紅黃灰只留給判定結果）
-          <p className="mt-3 rounded-lg bg-surface-sunken px-3 py-2 text-sm">統計已超過 48 小時沒有更新，數字可能不是最新的。</p>
+          <p className="mt-6 rounded-lg bg-surface-sunken px-3 py-2 text-sm">統計已超過 48 小時沒有更新，數字可能不是最新的。</p>
         )}
       </div>
       <p className="mt-4 text-sm text-text-secondary">資料每日統計一次，圖表數據來自 CISA 已被利用漏洞清單。</p>

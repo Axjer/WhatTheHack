@@ -1,5 +1,5 @@
 /**
- * 每日更新 CISA 已被利用漏洞清單（KEV）統計：近 7 天每天新增的筆數與前 7 天的總數，
+ * 每日更新 CISA 已被利用漏洞清單（KEV）統計：近 7 天每天新增的筆數，
  * 寫到 public/data/kev.json，給最新情資頁的趨勢圖使用。由部署 workflow 在 build 前執行（`npm run update-kev`）。
  *
  * 環境變數：
@@ -20,8 +20,7 @@ function isKevFile(value: unknown): value is KevFile {
   return (
     typeof value === 'object' &&
     value !== null &&
-    Array.isArray((value as KevFile).daily) &&
-    typeof (value as KevFile).previousWeek === 'number'
+    Array.isArray((value as KevFile).daily)
   );
 }
 
@@ -52,6 +51,6 @@ if (!kev) {
   if (kev.cisaFailedSince) console.warn(`CISA KEV 自 ${kev.cisaFailedSince} 起抓不到`);
   const days = kev.daily.map(({ date, count }) => `${date.slice(5)} ${count}`).join('、');
   console.log(
-    `KEV（更新於 ${kev.updatedAt}）：近 ${KEV_WINDOW_DAYS} 天每日新增 ${days}；前 ${KEV_WINDOW_DAYS} 天共 ${kev.previousWeek} 筆`,
+    `KEV（更新於 ${kev.updatedAt}）：近 ${KEV_WINDOW_DAYS} 天每日新增 ${days}`,
   );
 }

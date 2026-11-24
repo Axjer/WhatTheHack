@@ -17,8 +17,6 @@ export type KevFile = {
   updatedAt: string | null;
   /** 近 7 天（含當天）每天新增的筆數，由舊到新 */
   daily: KevDay[];
-  /** 再往前 7 天新增的總筆數，給結論比較用 */
-  previousWeek: number;
   /**
    * CISA 官方來源從什麼時候開始抓不到（ISO 8601）；抓得到時為 null。
    * 只給每日更新流程判斷是否已連續兩天抓不到、該改抓 GitHub 上的官方副本，頁面不使用。
