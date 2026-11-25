@@ -93,6 +93,7 @@ Issue 記錄在 GitHub 的 Axjer/WhatTheHack 儲存庫（使用 `gh` CLI 操作�
 
 ### 資料更新（GitHub Actions，每日）
 
+- 觸發：cron-job.org 每天台灣時間 06:07 呼叫 GitHub API 觸發 workflow（主要），GitHub 排程留作備援（常延遲數小時）。設定與 token 更新見 `docs/daily-update.md`。
 - 惡意網址清單：合併 URLhaus 與 OpenPhish（免費版），產生靜態檔隨網站部署。
 - 顯示資料更新時間（例：「清單更新於：2026-11-13 08:00」）；超過 48 小時未更新時顯示提醒。
 
