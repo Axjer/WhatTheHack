@@ -79,7 +79,7 @@ describe('最新情資頁：最近正被攻擊的軟體（CISA KEV）', () => {
     const region = await section();
     expect(region).toHaveTextContent('近 30 天，美國網路安全機構（CISA）確認已有攻擊者在利用漏洞的軟體。');
     expect(region).toHaveTextContent(
-      '如果你有使用以下任何軟體或設備，請盡快更新到最新版；公司或學校的設備請轉告 IT 人員。',
+      '如果你有使用以下任何軟體或設備，請盡快更新到最新版。',
     );
   });
 

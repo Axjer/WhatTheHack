@@ -66,7 +66,7 @@ export default function KevProducts({ kev, now }: { kev: KevFile; now: number })
         {products.length > 0 ? (
           <>
             <p className="max-w-3xl font-medium">
-              如果你有使用以下任何軟體或設備，請盡快更新到最新版；公司或學校的設備請轉告 IT 人員。
+              如果你有使用以下任何軟體或設備，請盡快更新到最新版。
             </p>
             {everyday.length > 0 ? (
               <ProductList products={everyday} />
