@@ -1,5 +1,6 @@
 /**
- * 每日更新惡意網址清單：抓取 URLhaus 與 OpenPhish，整理後寫到 public/data/malicious-urls.json。
+ * 每日更新惡意網址清單：抓取 URLhaus 與 OpenPhish，整理後寫到 public/data/malicious-urls.json，
+ * 並把筆數寫到 public/data/stats.json（首頁數據卡用）。
  * 由部署 workflow 在 build 前執行（`npm run update-list`）。
  *
  * 環境變數：
@@ -10,10 +11,13 @@
  */
 import { writeFile } from 'node:fs/promises';
 import { listSources, type MaliciousList } from '../src/analysis/analyzeUrl.ts';
+import type { StatsFile } from '../src/data/stats.ts';
 import { fetchText, readPrevious } from './fetch.ts';
 import { buildMaliciousList } from './malicious-list.ts';
 
 const OUTPUT = new URL('../public/data/malicious-urls.json', import.meta.url);
+/** 首頁數據卡只讀這個小檔，不下載整份清單 */
+const STATS_OUTPUT = new URL('../public/data/stats.json', import.meta.url);
 const OPENPHISH_URL = 'https://openphish.com/feed.txt';
 
 /** 不印出網址：URLhaus 的網址含 Auth-Key（fetchText 只印標籤與狀態） */
@@ -48,6 +52,8 @@ if (!list) {
   console.warn('兩個來源都失敗，也沒有上一份清單：保留現有檔案，不覆蓋');
 } else {
   await writeFile(OUTPUT, `${JSON.stringify(list)}\n`);
+  const stats: StatsFile = { maliciousUrlCount: list.entries.length };
+  await writeFile(STATS_OUTPUT, `${JSON.stringify(stats)}\n`);
   console.log(`惡意網址清單：共 ${list.entries.length} 筆`);
   for (const source of listSources) {
     const count = list.entries.filter((entry) => entry.source === source).length;
