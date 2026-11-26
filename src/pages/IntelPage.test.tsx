@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { KevFile } from '../data/kev';
+import type { KevFile, KevProduct } from '../data/kev';
 import type { NewsFile } from '../data/news';
 import IntelPage from './IntelPage';
 
@@ -23,12 +23,16 @@ vi.mock('../data/loadKev', () => ({
   loadKev: () => (fakeKev === 'fails' ? Promise.reject(new Error('HTTP 404')) : Promise.resolve(fakeKev)),
 }));
 
-/** 剛更新過的 KEV 統計：daily 是 11/17 到 11/23 每天的筆數 */
-function freshKev(counts: number[]): KevFile {
-  return {
-    updatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-    daily: counts.map((count, index) => ({ date: `2026-11-${17 + index}`, count })),
-  };
+/** 近 30 天正被攻擊的產品，依最近收錄日期由新到舊 */
+const products: KevProduct[] = [
+  { name: 'Microsoft Windows', count: 3, latestDate: '2026-11-20', ransomware: true },
+  { name: 'Google Chrome', count: 1, latestDate: '2026-11-18', ransomware: false },
+  { name: 'Fortinet FortiOS', count: 2, latestDate: '2026-11-05', ransomware: false },
+];
+
+/** 剛更新過的 KEV 統計 */
+function freshKev(list: KevProduct[] = products): KevFile {
+  return { updatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(), products: list };
 }
 
 const twoArticles: NewsFile = {
@@ -61,76 +65,98 @@ function renderPage() {
 
 beforeEach(() => {
   fakeNews = twoArticles;
-  fakeKev = freshKev([0, 0, 0, 0, 0, 0, 0]);
+  fakeKev = freshKev();
 });
 
-describe('最新情資頁：已被利用漏洞趨勢（CISA KEV）', () => {
-  const trend = () => screen.findByRole('region', { name: '已被利用漏洞趨勢' });
+describe('最新情資頁：最近正被攻擊的軟體（CISA KEV）', () => {
+  const section = () => screen.findByRole('region', { name: '最近正被攻擊的軟體' });
+  const items = async () => within(await section()).getAllByRole('listitem');
 
-  it('長條圖逐日列出近 7 天的新增筆數，下方只標日期', async () => {
-    fakeKev = freshKev([1, 0, 3, 2, 0, 0, 4]);
+  it('說明範圍，並在清單上方給一次具體建議', async () => {
     renderPage();
-    const section = await trend();
-    expect(within(section).getByRole('heading', { name: '近 7 天新增已被利用漏洞' })).toBeInTheDocument();
-    expect(within(section).getByRole('img')).toHaveAccessibleName(
-      '近 7 天每日新增已被利用漏洞：11/17 1 筆、11/18 0 筆、11/19 3 筆、11/20 2 筆、11/21 0 筆、11/22 0 筆、11/23 4 筆',
+    const region = await section();
+    expect(region).toHaveTextContent('近 30 天，美國網路安全機構（CISA）確認已有攻擊者在利用漏洞的軟體。');
+    expect(region).toHaveTextContent(
+      '如果你有使用以下任何軟體或設備，請盡快更新到最新版；公司或學校的設備請轉告 IT 人員。',
     );
-    expect(section).toHaveTextContent('11/17');
-    expect(section).not.toHaveTextContent(/[一二三四五六日]（|星期|週/);
   });
 
-  it('不放結論句', async () => {
-    fakeKev = freshKev([1, 0, 3, 2, 0, 0, 4]);
+  it('依檔案順序（最近收錄的在前）逐項列出產品名、漏洞數與收錄日期', async () => {
     renderPage();
-    expect(await trend()).not.toHaveTextContent('結論');
+    const list = await items();
+    expect(list.map((item) => within(item).getByRole('heading').textContent)).toEqual([
+      'Microsoft Windows',
+      'Google Chrome',
+      'Fortinet FortiOS',
+    ]);
+    expect(list[0]).toHaveTextContent('3 個漏洞正被利用');
+    expect(list[0]).toHaveTextContent('11/20 收錄');
+    expect(within(list[0]).getByText('11/20 收錄')).toHaveAttribute('datetime', '2026-11-20');
+    expect(list[1]).toHaveTextContent('1 個漏洞正被利用');
   });
 
-  it('說明資料來源與更新頻率；不顯示 CVE 編號', async () => {
-    fakeKev = freshKev([1, 0, 3, 2, 0, 0, 4]);
+  it('有勒索軟體紀錄的產品才標示', async () => {
     renderPage();
-    const section = await trend();
-    expect(section).toHaveTextContent('資料每日統計一次，圖表數據來自 CISA 已被利用漏洞清單。');
-    expect(section).not.toHaveTextContent(/CVE-/);
+    const list = await items();
+    expect(list[0]).toHaveTextContent('已被用於勒索軟體攻擊');
+    expect(list[1]).not.toHaveTextContent('勒索軟體');
   });
 
-  it('趨勢圖在新聞之後', async () => {
-    fakeKev = freshKev([1, 0, 3, 2, 0, 0, 4]);
+  it('不放長條圖與結論句；不顯示 CVE 編號與 CVSS 分數', async () => {
     renderPage();
-    const section = await trend();
+    const region = await section();
+    expect(within(region).queryByRole('img')).not.toBeInTheDocument();
+    expect(region).not.toHaveTextContent(/結論|CVE-|CVSS/);
+  });
+
+  it('說明資料來源與更新頻率', async () => {
+    renderPage();
+    expect(await section()).toHaveTextContent(
+      '資料每日統計一次，清單來自美國 CISA 已被利用漏洞清單（Known Exploited Vulnerabilities）。',
+    );
+  });
+
+  it('近 30 天沒有新增 → 說明沒有新增，不說「安全」，仍註明來源', async () => {
+    fakeKev = freshKev([]);
+    renderPage();
+    const region = await section();
+    expect(region).toHaveTextContent('近 30 天沒有新增正被攻擊的軟體。');
+    // 副標的「網路安全機構」不算
+    expect(region).not.toHaveTextContent(/安全(?!機構)/);
+    expect(region).not.toHaveTextContent('請盡快更新');
+    expect(within(region).queryByRole('listitem')).not.toBeInTheDocument();
+    expect(region).toHaveTextContent('資料每日統計一次');
+  });
+
+  it('在新聞之後', async () => {
+    renderPage();
+    const region = await section();
     const newsHeading = await screen.findByRole('heading', { name: '2 篇焦點新聞' });
-    expect(newsHeading.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(newsHeading.compareDocumentPosition(region) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('超過 48 小時沒更新 → 照樣顯示，並提醒數字可能不是最新的', async () => {
-    fakeKev = { ...freshKev([1, 0, 3, 2, 0, 0, 4]), updatedAt: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString() };
+  it('超過 48 小時沒更新 → 照樣顯示，並提醒清單可能不是最新的', async () => {
+    fakeKev = { ...freshKev(), updatedAt: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString() };
     renderPage();
-    expect(await trend()).toHaveTextContent('統計已超過 48 小時沒有更新，數字可能不是最新的。');
+    expect(await section()).toHaveTextContent('清單已超過 48 小時沒有更新，可能不是最新的。');
   });
 
   it('48 小時內更新過 → 不顯示過期提醒', async () => {
-    fakeKev = freshKev([1, 0, 3, 2, 0, 0, 4]);
     renderPage();
-    expect(await trend()).not.toHaveTextContent('數字可能不是最新的');
+    expect(await section()).not.toHaveTextContent('48 小時');
   });
 
-  it('從未更新（佔位檔）或載入失敗 → 不顯示趨勢圖，新聞照常顯示', async () => {
-    fakeKev = { updatedAt: null, daily: [] };
+  it('從未更新（佔位檔）或載入失敗 → 不顯示這一區，新聞照常顯示', async () => {
+    fakeKev = { updatedAt: null, products: [] };
     const { unmount } = renderPage();
     await screen.findAllByRole('article');
-    expect(screen.queryByRole('region', { name: '已被利用漏洞趨勢' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '最近正被攻擊的軟體' })).not.toBeInTheDocument();
     unmount();
 
     fakeKev = 'fails';
     renderPage();
     await screen.findAllByRole('article');
-    expect(screen.queryByRole('region', { name: '已被利用漏洞趨勢' })).not.toBeInTheDocument();
-  });
-
-  it('新聞上方不再有一行橫幅', async () => {
-    fakeKev = freshKev([1, 0, 3, 2, 0, 0, 4]);
-    renderPage();
-    await trend();
-    expect(screen.queryByRole('region', { name: '已遭駭客利用的漏洞' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '最近正被攻擊的軟體' })).not.toBeInTheDocument();
   });
 });
 

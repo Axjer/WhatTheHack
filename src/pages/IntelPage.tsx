@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react';
-import KevTrend from '../components/KevTrend';
+import KevProducts from '../components/KevProducts';
 import type { KevFile } from '../data/kev';
 import { loadKev } from '../data/loadKev';
 import type { NewsFile, NewsItem } from '../data/news';
@@ -103,13 +103,13 @@ function NewsCard({ item, now }: { item: NewsItem; now: number }) {
 }
 
 /**
- * 最新情資頁：The Hacker News 重點新聞的 AI 白話摘要，以及已被利用漏洞趨勢（CISA KEV）。
+ * 最新情資頁：The Hacker News 重點新聞的 AI 白話摘要，以及最近正被攻擊的軟體（CISA KEV）。
  * 桌面版三張直式卡片並排，手機版上下排列。不使用燈號顏色。
  */
 export default function IntelPage() {
   const [news, setNews] = useState<NewsFile | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  /** 已被利用漏洞趨勢是附加資訊：載入失敗就不顯示，不影響新聞 */
+  /** 最近正被攻擊的軟體是附加資訊：載入失敗就不顯示，不影響新聞 */
   const [kev, setKev] = useState<KevFile | null>(null);
   const loading = !news && !loadFailed;
   const now = Date.now();
@@ -180,7 +180,7 @@ export default function IntelPage() {
         )}
       </section>
 
-      {kev && <KevTrend kev={kev} now={now} />}
+      {kev && <KevProducts kev={kev} now={now} />}
     </div>
   );
 }

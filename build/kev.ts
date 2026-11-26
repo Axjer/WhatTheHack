@@ -1,15 +1,34 @@
 /**
- * CISA 已被利用漏洞清單（KEV）統計模組：算出近 7 天每天新增的筆數。
+ * CISA 已被利用漏洞清單（KEV）統計模組：整理出近 30 天正被攻擊的產品清單。
  * 純函式，不連網；抓取由 update-kev.ts 負責。
  */
 import { z } from 'zod';
-import { KEV_WINDOW_DAYS, type KevFile } from '../src/data/kev.ts';
+import { KEV_WINDOW_DAYS, type KevFile, type KevProduct } from '../src/data/kev.ts';
 import { DAY_MS, taipeiDay } from '../src/time.ts';
 
 /** 只驗證用得到的欄位；目錄是空的視為格式不對（正式目錄有上千筆） */
 const CatalogSchema = z.object({
-  vulnerabilities: z.array(z.object({ dateAdded: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })).min(1),
+  vulnerabilities: z
+    .array(
+      z.object({
+        dateAdded: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        vendorProject: z.string(),
+        product: z.string(),
+        knownRansomwareCampaignUse: z.string().optional(),
+      }),
+    )
+    .min(1),
 });
+
+/**
+ * 「廠商 產品」；產品名已以廠商名的第一個字開頭時只用產品名，避免重複
+ * （例如 Google / Google Chrome、Barracuda Networks / Barracuda Email Security Gateway）。
+ */
+function productName(vendor: string, product: string): string {
+  const [v, p] = [vendor.trim(), product.trim()];
+  const firstWord = (text: string) => text.split(/\s+/)[0].toLowerCase();
+  return firstWord(p) === firstWord(v) ? p : `${v} ${p}`;
+}
 
 /** CISA 位在美東：dateAdded 是美東的日期 */
 const usEasternDay = new Intl.DateTimeFormat('en-CA', {
@@ -25,7 +44,8 @@ function daysBefore(today: string, daysAgo: number): string {
 }
 
 /**
- * 統計近 7 天（含今天）每天新增的筆數。
+ * 整理近 30 天（含今天）收錄的漏洞：同一產品（廠商＋產品，不分大小寫）合併成一項，
+ * 依最近收錄日期由新到舊排列；同一天時漏洞多的在前，再依名稱。
  * 「今天」以美東日期為準：不論排程或推上 main 的部署在什麼時間執行，視窗都對齊 CISA 的日期。
  * 不是 KEV 目錄時回傳 null。
  */
@@ -33,15 +53,28 @@ export function summarizeKev(catalog: unknown, now: Date): KevFile | null {
   const parsed = CatalogSchema.safeParse(catalog);
   if (!parsed.success) return null;
 
-  const counts = new Map<string, number>();
-  for (const { dateAdded } of parsed.data.vulnerabilities) counts.set(dateAdded, (counts.get(dateAdded) ?? 0) + 1);
+  // 日期都是 YYYY-MM-DD，可以直接比字串
+  const since = daysBefore(usEasternDay.format(now), KEV_WINDOW_DAYS - 1);
+  const byProduct = new Map<string, KevProduct>();
+  for (const { dateAdded, vendorProject, product, knownRansomwareCampaignUse } of parsed.data.vulnerabilities) {
+    if (dateAdded < since) continue;
+    const name = productName(vendorProject, product);
+    const key = name.toLowerCase();
+    const ransomware = knownRansomwareCampaignUse === 'Known';
+    const existing = byProduct.get(key);
+    if (!existing) {
+      byProduct.set(key, { name, count: 1, latestDate: dateAdded, ransomware });
+    } else {
+      existing.count++;
+      if (dateAdded > existing.latestDate) existing.latestDate = dateAdded;
+      existing.ransomware ||= ransomware;
+    }
+  }
 
-  const today = usEasternDay.format(now);
-  const daily = Array.from({ length: KEV_WINDOW_DAYS }, (_, index) => {
-    const date = daysBefore(today, KEV_WINDOW_DAYS - 1 - index);
-    return { date, count: counts.get(date) ?? 0 };
-  });
-  return { updatedAt: now.toISOString(), daily };
+  const products = [...byProduct.values()].sort(
+    (a, b) => b.latestDate.localeCompare(a.latestDate) || b.count - a.count || a.name.localeCompare(b.name),
+  );
+  return { updatedAt: now.toISOString(), products };
 }
 
 type UpdateKevInput = {
