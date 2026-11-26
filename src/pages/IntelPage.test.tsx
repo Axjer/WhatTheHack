@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { KevFile, KevProduct } from '../data/kev';
@@ -23,11 +24,12 @@ vi.mock('../data/loadKev', () => ({
   loadKev: () => (fakeKev === 'fails' ? Promise.reject(new Error('HTTP 404')) : Promise.resolve(fakeKev)),
 }));
 
-/** 近 30 天正被攻擊的產品，依最近收錄日期由新到舊 */
+/** 近 30 天正被攻擊的產品：一般人常用的在前，各自由新到舊 */
 const products: KevProduct[] = [
-  { name: 'Microsoft Windows', count: 3, latestDate: '2026-11-20', ransomware: true },
-  { name: 'Google Chrome', count: 1, latestDate: '2026-11-18', ransomware: false },
-  { name: 'Fortinet FortiOS', count: 2, latestDate: '2026-11-05', ransomware: false },
+  { name: 'Microsoft Windows', count: 3, latestDate: '2026-11-20', ransomware: true, everyday: true },
+  { name: 'Google Chrome', count: 1, latestDate: '2026-11-18', ransomware: false, everyday: true },
+  { name: 'Mitel MiCollab', count: 5, latestDate: '2026-11-25', ransomware: false, everyday: false },
+  { name: 'Fortinet FortiOS', count: 2, latestDate: '2026-11-05', ransomware: false, everyday: false },
 ];
 
 /** 剛更新過的 KEV 統計 */
@@ -77,7 +79,7 @@ describe('最新情資頁：最近正被攻擊的軟體（CISA KEV）', () => {
     const region = await section();
     expect(region).toHaveTextContent('近 30 天，美國網路安全機構（CISA）確認已有攻擊者在利用漏洞的軟體。');
     expect(region).toHaveTextContent(
-      '如果你有使用以下任何軟體或設備，請盡快更新到最新版；公司或學校的設備請轉告 IT 人員。',
+      '如果你有使用以下任何軟體或設備，請盡快更新到最新版。',
     );
   });
 
@@ -87,12 +89,42 @@ describe('最新情資頁：最近正被攻擊的軟體（CISA KEV）', () => {
     expect(list.map((item) => within(item).getByRole('heading').textContent)).toEqual([
       'Microsoft Windows',
       'Google Chrome',
+      'Mitel MiCollab',
       'Fortinet FortiOS',
     ]);
     expect(list[0]).toHaveTextContent('3 個漏洞正被利用');
     expect(list[0]).toHaveTextContent('11/20 收錄');
     expect(within(list[0]).getByText('11/20 收錄')).toHaveAttribute('datetime', '2026-11-20');
     expect(list[1]).toHaveTextContent('1 個漏洞正被利用');
+  });
+
+  it('一般人常用的軟體直接顯示；其他產品預設收起來，摘要列寫出數量，點了才展開', async () => {
+    renderPage();
+    const region = await section();
+    const toggle = within(region).getByText('另外 2 項，多為公司或機構使用的產品');
+    const others = toggle.closest('details')!;
+    expect(others).not.toHaveAttribute('open');
+    expect(within(others).getByRole('heading', { name: 'Mitel MiCollab' })).toBeInTheDocument();
+    expect(within(others).queryByRole('heading', { name: 'Microsoft Windows' })).not.toBeInTheDocument();
+
+    await userEvent.click(toggle);
+    expect(others).toHaveAttribute('open');
+  });
+
+  it('只有常用軟體 → 不出現收起來的區塊', async () => {
+    fakeKev = freshKev(products.filter((product) => product.everyday));
+    renderPage();
+    const region = await section();
+    expect(region.querySelector('details')).toBeNull();
+    expect(within(region).getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('沒有常用軟體 → 說明沒有常見的個人軟體，但提醒下方仍可能有用到的設備；其他產品照樣收起來', async () => {
+    fakeKev = freshKev(products.filter((product) => !product.everyday));
+    renderPage();
+    const region = await section();
+    expect(region).toHaveTextContent('近 30 天沒有常見的個人軟體被收錄，但下方仍可能有你用到的設備。');
+    expect(within(region).getByText('另外 2 項，多為公司或機構使用的產品').closest('details')).not.toHaveAttribute('open');
   });
 
   it('有勒索軟體紀錄的產品才標示', async () => {

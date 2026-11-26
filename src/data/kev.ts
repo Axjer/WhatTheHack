@@ -11,6 +11,11 @@ export type KevProduct = {
   latestDate: string;
   /** 任一漏洞已被 CISA 標為勒索軟體已利用 */
   ransomware: boolean;
+  /**
+   * 一般人常用的軟體或設備（build/kev.ts 手動維護的名單）：頁面直接顯示，其他產品預設收起來。
+   * 改版前的統計檔沒有這個欄位，視為 false。
+   */
+  everyday: boolean;
 };
 
 /**
