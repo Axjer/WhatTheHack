@@ -39,6 +39,26 @@ describe('buildMaliciousList', () => {
     ]);
   });
 
+  it('URLhaus online.csv：收錄超過 30 天但仍在線上的網址照樣收進清單（#32）', () => {
+    const onlineCsv = [
+      '# abuse.ch URLhaus Database Dump (CSV - online URLs only)',
+      '# id,dateadded,url,url_status,last_online,threat,tags,urlhaus_link,reporter',
+      '"3100000","2026-08-01 08:00:00","http://still-online.example/old.exe","online","2026-11-19 23:00:00","malware_download","exe","https://urlhaus.abuse.ch/url/3100000/","someone"',
+    ].join('\n');
+
+    const list = buildMaliciousList({ urlhausCsv: onlineCsv, openphishText: null, previous: null, now });
+
+    expect(list?.entries).toEqual([
+      {
+        url: 'http://still-online.example/old.exe',
+        source: 'URLhaus',
+        threat: 'malware',
+        firstSeen: '2026-08-01T08:00:00.000Z',
+        lastSeen: '2026-11-19T23:00:00.000Z',
+      },
+    ]);
+  });
+
   it('合併與去重：正規化後相同的網址在同一來源只留一筆，兩個來源各留一筆', () => {
     const csv = [
       '"1","2026-11-15 00:00:00","https://EVIL.example/pay/","online","2026-11-16 00:00:00","malware_download","","",""',

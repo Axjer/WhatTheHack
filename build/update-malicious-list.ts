@@ -20,14 +20,18 @@ const OUTPUT = new URL('../public/data/malicious-urls.json', import.meta.url);
 const STATS_OUTPUT = new URL('../public/data/stats.json', import.meta.url);
 const OPENPHISH_URL = 'https://openphish.com/feed.txt';
 
-/** 不印出網址：URLhaus 的網址含 Auth-Key（fetchText 只印標籤與狀態） */
+/**
+ * 抓 URLhaus 的 online.csv：目前仍在線上的惡意網址，不限收錄時間。
+ * 不用 recent.csv（只收近 30 天新增）：超過 30 天但仍在散布惡意程式的網址會被漏掉（#32）。
+ * 不印出網址：URLhaus 的網址含 Auth-Key（fetchText 只印標籤與狀態）。
+ */
 function fetchUrlhaus(): Promise<string | null> {
   const key = process.env.URLHAUS_AUTH_KEY?.trim();
   if (!key) {
     console.warn('URLhaus：沒有設定 URLHAUS_AUTH_KEY，沿用上一份清單');
     return Promise.resolve(null);
   }
-  return fetchText('URLhaus', `https://urlhaus-api.abuse.ch/v2/files/exports/${encodeURIComponent(key)}/recent.csv`);
+  return fetchText('URLhaus', `https://urlhaus-api.abuse.ch/v2/files/exports/${encodeURIComponent(key)}/online.csv`);
 }
 
 function isMaliciousList(value: unknown): value is MaliciousList {
