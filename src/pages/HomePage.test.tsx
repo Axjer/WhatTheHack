@@ -179,6 +179,12 @@ describe('行動按鈕', () => {
     expect(sections.at(-1)).toBe(screen.getByRole('region', { name: actionsTitle }));
   });
 
+  it('上方有主標「兩大核心功能」與副標', () => {
+    renderHome();
+    const cta = screen.getByRole('region', { name: actionsTitle });
+    expect(within(cta).getByText('現在就開始你的日常資安防護')).toBeInTheDocument();
+  });
+
   it('分成「網址分析」與「最新情資」兩個區塊', () => {
     renderHome();
     const cta = screen.getByRole('region', { name: actionsTitle });

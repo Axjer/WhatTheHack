@@ -274,7 +274,12 @@ export default function HomePage() {
           </ul>
         </HomeSection>
 
-        <HomeSection title="兩大核心功能" tone="raised" spacing="groupBottom">
+        <HomeSection
+          title="兩大核心功能"
+          subtitle="現在就開始你的日常資安防護"
+          tone="raised"
+          spacing="groupBottom"
+        >
           <ul className="grid gap-6 md:grid-cols-2">
             {actions.map(({ title, description, link }) => (
               <li key={title} className="flex flex-col rounded-xl bg-surface-muted p-6 md:p-10">
