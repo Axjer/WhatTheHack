@@ -136,15 +136,33 @@ describe('數據卡', () => {
     expect(within(section).queryByText(/^0 /)).not.toBeInTheDocument();
   });
 
-  it('惡意網址筆數為 0 或 KEV 統計從未更新時，同樣顯示「—」', async () => {
+  it('惡意網址筆數為 0 時顯示「—」', async () => {
     fakeStats = { maliciousUrlCount: 0 };
-    fakeKev = { updatedAt: null, products: [] };
     renderHome();
     const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(await within(cards[1]).findByText('30+')).toBeInTheDocument();
     expect(within(cards[0]).getByText('—')).toBeInTheDocument();
-    expect(within(cards[1]).getByText('—')).toBeInTheDocument();
+  });
+
+  it('KEV 統計檔有幾項就顯示幾項，不論是否過期或從未更新', async () => {
+    fakeKev = {
+      updatedAt: null,
+      products: Array.from({ length: 41 }, (_, index) => ({ name: `Vendor Product ${index}`, ...kevProduct })),
+    };
+    renderHome();
+    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
+
+    expect(await within(cards[1]).findByText('40+')).toBeInTheDocument();
+  });
+
+  it('KEV 近 30 天沒有產品時照實顯示 0 項', async () => {
+    fakeKev = { updatedAt: '2026-11-26T00:00:00.000Z', products: [] };
+    renderHome();
+    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
+
+    expect(await within(cards[1]).findByText('0')).toBeInTheDocument();
+    expect(within(cards[1]).getByText('項')).toBeInTheDocument();
   });
 });
 

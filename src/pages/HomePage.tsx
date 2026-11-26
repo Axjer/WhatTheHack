@@ -28,7 +28,10 @@ const painPoints = [
   },
 ];
 
-/** 數據卡的數字：載入中或讀不到時為 null（顯示「—」，不顯示 0，以免讀成「沒有惡意網址」） */
+/**
+ * 數據卡的數字：載入中或讀不到檔案時為 null（顯示「—」）。
+ * 惡意網址筆數為 0 也視為 null，以免讀成「沒有惡意網址」；KEV 產品數則照實顯示（含 0）。
+ */
 type StatCounts = { maliciousUrls: number | null; kevProducts: number | null };
 
 function useStatCounts(): StatCounts {
@@ -46,9 +49,9 @@ function useStatCounts(): StatCounts {
       () => {},
     );
     loadKev().then(
-      // 從未成功更新的統計檔（updatedAt 為 null）沒有可信的數字
-      ({ updatedAt, products }) => {
-        if (updatedAt && Array.isArray(products)) update({ kevProducts: products.length });
+      // 統計檔裡有幾項就顯示幾項（含 0、含過期的檔案）；只有讀不到檔案才顯示「—」
+      ({ products }) => {
+        if (Array.isArray(products)) update({ kevProducts: products.length });
       },
       () => {},
     );
