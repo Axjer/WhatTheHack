@@ -34,6 +34,6 @@ export const verdictLight: Record<
     textClass: 'text-unknown',
     chipClass: 'border-unknown/50 text-unknown',
     // ❔ 是白色的 emoji，放在灰色圓底上才看得見
-    iconClass: 'grid size-[1.15em] place-items-center rounded-full bg-unknown text-[0.75em]',
+    iconClass: 'grid size-[1.15em] place-items-center rounded-full bg-unknown text-[0.75em] leading-none',
   },
 };
