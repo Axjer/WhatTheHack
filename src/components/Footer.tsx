@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { navyItemClass } from '../styles';
 
-const repoUrl = 'https://github.com/Axjer/WhatTheHack';
+export const repoUrl = 'https://github.com/Axjer/WhatTheHack';
 
 /** GitHub 標誌（Simple Icons，CC0） */
 function GitHubMark() {
