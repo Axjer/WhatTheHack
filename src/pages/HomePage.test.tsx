@@ -88,13 +88,20 @@ describe('痛點與解法', () => {
 describe('數據卡', () => {
   it('有三張數據卡', () => {
     renderHome();
-    const section = screen.getByRole('region', { name: '平台數據' });
+    const section = screen.getByRole('region', { name: '每天持續更新的資安防護網' });
     expect(within(section).getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('上方有看得到的主標與副標', () => {
+    renderHome();
+    const section = screen.getByRole('region', { name: '每天持續更新的資安防護網' });
+    expect(within(section).getByRole('heading', { level: 2, name: '每天持續更新的資安防護網' })).not.toHaveClass('sr-only');
+    expect(within(section).getByText('串接全球公開威脅資料庫，掌握最新漏洞動態')).toBeInTheDocument();
   });
 
   it('數字往下取整並帶單位：惡意網址筆數、近期受攻擊軟體數、更新頻率', async () => {
     renderHome();
-    const section = screen.getByRole('region', { name: '平台數據' });
+    const section = screen.getByRole('region', { name: '每天持續更新的資安防護網' });
     const cards = within(section).getAllByRole('listitem');
 
     expect(await within(cards[0]).findByText('90,000+')).toBeInTheDocument();
@@ -112,7 +119,7 @@ describe('數據卡', () => {
   it('讀不到統計檔時，惡意網址卡顯示「—」，不顯示 0', async () => {
     fakeStats = 'fails';
     renderHome();
-    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
+    const cards = within(screen.getByRole('region', { name: '每天持續更新的資安防護網' })).getAllByRole('listitem');
 
     expect(await within(cards[1]).findByText('30+')).toBeInTheDocument();
     expect(within(cards[0]).getByText('—')).toBeInTheDocument();
@@ -123,7 +130,7 @@ describe('數據卡', () => {
   it('讀不到 KEV 統計檔時，受攻擊軟體卡顯示「—」，不顯示 0', async () => {
     fakeKev = 'fails';
     renderHome();
-    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
+    const cards = within(screen.getByRole('region', { name: '每天持續更新的資安防護網' })).getAllByRole('listitem');
 
     expect(await within(cards[0]).findByText('90,000+')).toBeInTheDocument();
     expect(within(cards[1]).getByText('—')).toBeInTheDocument();
@@ -134,7 +141,7 @@ describe('數據卡', () => {
   it('惡意網址筆數為 0 時顯示「—」', async () => {
     fakeStats = { maliciousUrlCount: 0 };
     renderHome();
-    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
+    const cards = within(screen.getByRole('region', { name: '每天持續更新的資安防護網' })).getAllByRole('listitem');
 
     expect(await within(cards[1]).findByText('30+')).toBeInTheDocument();
     expect(within(cards[0]).getByText('—')).toBeInTheDocument();
@@ -146,7 +153,7 @@ describe('數據卡', () => {
       products: Array.from({ length: 41 }, (_, index) => ({ name: `Vendor Product ${index}`, ...kevProduct })),
     };
     renderHome();
-    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
+    const cards = within(screen.getByRole('region', { name: '每天持續更新的資安防護網' })).getAllByRole('listitem');
 
     expect(await within(cards[1]).findByText('40+')).toBeInTheDocument();
   });
@@ -154,7 +161,7 @@ describe('數據卡', () => {
   it('KEV 近 30 天沒有產品時照實顯示 0 項', async () => {
     fakeKev = { updatedAt: '2026-11-26T00:00:00.000Z', products: [] };
     renderHome();
-    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
+    const cards = within(screen.getByRole('region', { name: '每天持續更新的資安防護網' })).getAllByRole('listitem');
 
     expect(await within(cards[1]).findByText('0')).toBeInTheDocument();
     expect(within(cards[1]).getByText('項')).toBeInTheDocument();
@@ -165,12 +172,12 @@ describe('行動按鈕', () => {
   it('位於頁面最後一個區塊', () => {
     renderHome();
     const sections = within(screen.getByRole('main')).getAllByRole('region');
-    expect(sections.at(-1)).toBe(screen.getByRole('region', { name: '收到可疑連結？' }));
+    expect(sections.at(-1)).toBe(screen.getByRole('region', { name: '兩大核心功能' }));
   });
 
   it('分成「網址分析」與「最新情資」兩個區塊', () => {
     renderHome();
-    const cta = screen.getByRole('region', { name: '收到可疑連結？' });
+    const cta = screen.getByRole('region', { name: '兩大核心功能' });
     const blocks = within(cta)
       .getAllByRole('heading', { level: 3 })
       .map((heading) => heading.textContent);
@@ -179,7 +186,7 @@ describe('行動按鈕', () => {
 
   it('兩顆按鈕的文字都是「了解更多」，並各自附上只給螢幕閱讀器讀的目的地', () => {
     renderHome();
-    const cta = screen.getByRole('region', { name: '收到可疑連結？' });
+    const cta = screen.getByRole('region', { name: '兩大核心功能' });
     const links = within(cta).getAllByRole('link');
 
     expect(links.map((link) => link.textContent)).toEqual(['了解更多網址分析', '了解更多最新情資']);
@@ -192,7 +199,7 @@ describe('行動按鈕', () => {
   ])('「$name」前往 $heading 頁', async ({ name, heading }) => {
     const user = userEvent.setup();
     renderHome();
-    const cta = screen.getByRole('region', { name: '收到可疑連結？' });
+    const cta = screen.getByRole('region', { name: '兩大核心功能' });
 
     await user.click(within(cta).getByRole('link', { name }));
 

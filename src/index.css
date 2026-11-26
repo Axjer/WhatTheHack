@@ -9,6 +9,8 @@
   --color-surface-raised: oklch(100% 0 0);
   /* 淺色區塊底（帶一點藍，與判定結果的「查無紀錄」灰區隔） */
   --color-surface-sunken: oklch(97% 0.01 255);
+  /* 首頁數據卡與行動區塊的淺冷灰底（#F3F4F6）；比「查無紀錄」的底色亮，不是判定結果的灰 */
+  --color-surface-muted: oklch(96.7% 0.003 264.5);
   --color-text-primary: oklch(25% 0.03 255);
   --color-text-secondary: oklch(45% 0.03 255);
   --color-primary: oklch(42% 0.12 260);

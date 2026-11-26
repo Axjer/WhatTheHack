@@ -20,6 +20,8 @@ const textOnBackground = [
   ['text-primary', 'surface-sunken'],
   ['text-secondary', 'surface-sunken'],
   ['primary', 'surface-sunken'],
+  ['text-primary', 'surface-muted'],
+  ['text-secondary', 'surface-muted'],
   ['danger', 'danger-bg'],
   ['text-primary', 'warning-bg'],
   ['text-primary', 'warning'],
