@@ -103,16 +103,13 @@ const steps: Step[] = [
   },
 ];
 
-/** 一步的結果：符合時停在這個燈號（顏色＋圖示＋文字，字級等同 H2） */
+/** 一步的結果：符合時停在這個燈號（顏色＋文字，字級等同 H2） */
 function StepOutcome({ verdict, meaning, last }: { verdict: Verdict; meaning: ReactNode; last: boolean }) {
   const light = verdictLight[verdict];
   return (
     <div className={`mt-5 flex flex-col gap-x-6 gap-y-1 rounded-xl p-4 sm:flex-row sm:items-center md:px-6 ${light.cardClass} ${light.textClass}`}>
-      <p className="flex shrink-0 items-center gap-3 text-h2 font-bold">
+      <p className="shrink-0 text-h2 font-bold">
         <span className="sr-only">{last ? '判定為' : '符合就判定為'}</span>
-        <span aria-hidden="true" className={light.iconClass}>
-          {light.icon}
-        </span>
         {light.label}
       </p>
       <p className="font-medium">{meaning}</p>

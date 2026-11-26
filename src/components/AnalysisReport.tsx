@@ -118,12 +118,9 @@ export default function AnalysisReport({ result, now }: AnalysisReportProps) {
               id="analysis-verdict"
               ref={headingRef}
               tabIndex={-1}
-              className={`flex items-center gap-3 text-h2 font-bold outline-none ${light.textClass}`}
+              className={`text-h2 font-bold outline-none ${light.textClass}`}
             >
               <span className="sr-only">判定結果：</span>
-              <span aria-hidden="true" className={light.iconClass}>
-                {light.icon}
-              </span>
               {light.label}
             </h2>
             <p className={`mt-2 font-medium ${light.textClass}`}>{judgmentOf(result)}</p>

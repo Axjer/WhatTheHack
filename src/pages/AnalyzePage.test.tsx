@@ -138,11 +138,11 @@ describe('網址分析頁', () => {
     },
   );
 
-  it('已知惡意：燈號（圖示＋文字）、白話判斷、命中來源數與建議行動', async () => {
+  it('已知惡意：燈號（文字標籤，不放 emoji）、白話判斷、命中來源數與建議行動', async () => {
     const { analyze } = await setup();
     await analyze('https://evil-login.example/pay');
 
-    expect(verdictHeading()).toHaveTextContent('⛔已知惡意');
+    expect(verdictHeading()!.textContent).toBe('判定結果：已知惡意');
     expect(verdictHeading()).toHaveFocus();
     const card = verdictCard();
     expect(within(card).getByText('這個網址曾被通報用來騙取帳號密碼、散布惡意程式，請不要點擊。')).toBeInTheDocument();
@@ -156,11 +156,11 @@ describe('網址分析頁', () => {
     ]);
   });
 
-  it('查無紀錄：燈號（圖示＋文字）與固定文案', async () => {
+  it('查無紀錄：燈號（文字標籤，不放 emoji）與固定文案', async () => {
     const { analyze } = await setup();
     await analyze('example.org');
 
-    expect(verdictHeading()).toHaveTextContent('❔查無紀錄');
+    expect(verdictHeading()!.textContent).toBe('判定結果：查無紀錄');
     expect(
       within(verdictCard()).getByText(
         '目前的資料庫中沒有這個網址的紀錄。這不代表它安全；如果訊息來源可疑，請先向寄件人或 IT 人員確認。',
@@ -190,11 +190,11 @@ describe('網址分析頁', () => {
     expect(rows.map((row) => within(row).getAllByRole('cell')[0].textContent)).toEqual(['命中', '命中']);
   });
 
-  it('可疑：燈號（圖示＋文字）並以白話說明符合的警訊', async () => {
+  it('可疑：燈號（文字標籤，不放 emoji）並以白話說明符合的警訊', async () => {
     const { analyze } = await setup();
     await analyze('https://bit.ly/3abcDEF');
 
-    expect(verdictHeading()).toHaveTextContent('⚠️可疑');
+    expect(verdictHeading()!.textContent).toBe('判定結果：可疑');
     const card = verdictCard();
     expect(within(card).getByText(/不在惡意網址清單中，但有可疑的地方/)).toBeInTheDocument();
     expect(within(card).getByText('這是短網址，看不出點開後真正會連到哪裡。')).toBeInTheDocument();
