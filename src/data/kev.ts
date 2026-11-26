@@ -20,7 +20,7 @@ export type KevProduct = {
 export type KevFile = {
   /** 最近一次成功更新的時間（ISO 8601）；從未更新為 null */
   updatedAt: string | null;
-  /** 近 30 天正被攻擊的產品，依最近收錄日期由新到舊 */
+  /** 近 30 天正被攻擊的產品：一般人常用的軟體在前，前後兩段各自依最近收錄日期由新到舊（排序見 build/kev.ts） */
   products: KevProduct[];
   /**
    * CISA 官方來源從什麼時候開始抓不到（ISO 8601）；抓得到時為 null。

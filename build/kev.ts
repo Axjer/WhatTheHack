@@ -21,8 +21,9 @@ const CatalogSchema = z.object({
 });
 
 /**
- * 一般人常用的軟體與設備：產品名（小寫）以這些字開頭時排在清單前面。手動維護；
- * 只看產品名，同廠商的伺服器或企業產品（例如 Microsoft Exchange Server）不算。
+ * 一般人常用的軟體與設備：顯示名稱（小寫）以這些字開頭時排在清單前面。手動維護。
+ * 大廠只列個人會用的產品，同廠商的伺服器產品（例如 Microsoft Exchange Server）不算；
+ * Apple、Android 與家用路由器廠商則整個廠商都算。
  */
 const EVERYDAY_PREFIXES = [
   'microsoft windows',
@@ -35,7 +36,7 @@ const EVERYDAY_PREFIXES = [
   'microsoft teams',
   'google chrome',
   'google chromium',
-  'google android',
+  // CISA 的 Android 漏洞廠商欄就是 Android（如 Android Framework、Android Kernel）
   'android',
   'apple',
   'mozilla firefox',
@@ -43,7 +44,6 @@ const EVERYDAY_PREFIXES = [
   'adobe acrobat',
   'adobe reader',
   'rarlab winrar',
-  'winrar',
   '7-zip',
   'samsung mobile',
   // 家用路由器

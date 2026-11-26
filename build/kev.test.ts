@@ -100,7 +100,6 @@ describe('summarizeKev', () => {
     ['Microsoft', 'Windows'],
     ['Microsoft', 'Edge'],
     ['Google', 'Chrome'],
-    ['Google', 'Android'],
     ['Android', 'Framework'],
     ['Apple', 'iOS'],
     ['Mozilla', 'Firefox'],
