@@ -125,9 +125,8 @@ function VerdictDemo() {
       <div className="hero-demo-verdict">
         <p
           data-verdict
-          className="inline-flex items-center gap-3 rounded-lg bg-danger-bg px-4 py-2 text-h2 font-semibold text-danger"
+          className="inline-block rounded-lg bg-danger-bg px-4 py-2 text-h2 font-semibold text-danger"
         >
-          <span aria-hidden="true">⛔</span>
           已知惡意
         </p>
         <p className="mt-3 text-sm text-text-secondary">這個網址在惡意網址清單中，請不要點開。</p>

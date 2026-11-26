@@ -30,7 +30,7 @@ describe('首頁主視覺', () => {
     const demo = within(hero).getByRole('figure', { name: '範例：貼上網址後的判定結果' });
 
     expect(within(demo).getByText('hxxps://evil[.]com')).toBeInTheDocument();
-    expect(within(demo).getByText('已知惡意')).toBeInTheDocument();
+    expect(within(demo).getByText('已知惡意', { selector: 'p' }).textContent).toBe('已知惡意');
     expect(within(demo).queryAllByRole('link')).toHaveLength(0);
   });
 

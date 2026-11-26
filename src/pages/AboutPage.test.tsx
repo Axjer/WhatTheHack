@@ -39,17 +39,15 @@ describe('來源與說明頁', () => {
     expect(steps[2]).toHaveTextContent('查無紀錄');
   });
 
-  it('燈號同時有圖示與文字標籤', () => {
+  it('燈號只有文字標籤，不放 emoji', () => {
     renderPage();
     const region = section('網址分析怎麼判定');
-    for (const [icon, label] of [
-      ['⛔', '已知惡意'],
-      ['⚠️', '可疑'],
-      ['❔', '查無紀錄'],
-    ]) {
-      const light = within(region).getByText(label, { selector: 'p' });
-      expect(light).toHaveTextContent(icon);
-    }
+    const lights = [...region.querySelectorAll<HTMLElement>('p.text-h2')];
+    expect(lights.map((light) => light.textContent!.replace(/^(符合就)?判定為/, ''))).toEqual([
+      '已知惡意',
+      '可疑',
+      '查無紀錄',
+    ]);
   });
 
   it('說明三項警訊，範例網址以 defang 格式顯示且不可點擊', () => {
