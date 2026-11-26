@@ -292,9 +292,6 @@ export default function AboutPage() {
               <li>資料來源由第三方維護，本站無法保證內容完整或即時。</li>
               <li>最新情資的摘要由 AI 產生，可能有誤，請以原文為準。</li>
             </ul>
-            <p className="rounded-lg bg-surface-sunken px-4 py-3">
-              如果你已經點開可疑的連結，或在上面輸入了帳號密碼，請立即更改密碼，並通知 IT 人員或資安窗口；也可以撥打 165 反詐騙專線諮詢。
-            </p>
           </Section>
         </div>
       </div>
