@@ -100,7 +100,7 @@ export function summarizeKev(catalog: unknown, now: Date): KevFile | null {
     const ransomware = knownRansomwareCampaignUse === 'Known';
     const existing = byProduct.get(key);
     if (!existing) {
-      byProduct.set(key, { name, count: 1, latestDate: dateAdded, ransomware });
+      byProduct.set(key, { name, count: 1, latestDate: dateAdded, ransomware, everyday: isEveryday(name) });
     } else {
       existing.count++;
       if (dateAdded > existing.latestDate) existing.latestDate = dateAdded;
@@ -110,7 +110,7 @@ export function summarizeKev(catalog: unknown, now: Date): KevFile | null {
 
   const products = [...byProduct.values()].sort(
     (a, b) =>
-      Number(isEveryday(b.name)) - Number(isEveryday(a.name)) ||
+      Number(b.everyday) - Number(a.everyday) ||
       b.latestDate.localeCompare(a.latestDate) ||
       b.count - a.count ||
       a.name.localeCompare(b.name),

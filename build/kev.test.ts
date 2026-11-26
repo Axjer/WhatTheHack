@@ -34,7 +34,7 @@ function catalog(entries: (Entry | string)[]) {
 }
 
 function windows(count: number, latestDate: string, ransomware = false): KevProduct {
-  return { name: 'Microsoft Windows', count, latestDate, ransomware };
+  return { name: 'Microsoft Windows', count, latestDate, ransomware, everyday: true };
 }
 
 /** 清單的「名稱 漏洞數」，方便比對排序 */
@@ -73,7 +73,7 @@ describe('summarizeKev', () => {
     expect(names(kev)).toEqual(['Cisco IOS XE 2', 'Atlassian Confluence 1', 'Ivanti Connect Secure 1', 'Fortinet FortiOS 1']);
   });
 
-  it('一般人常用的軟體排在前面，前後兩段各自依最近收錄日期由新到舊', () => {
+  it('標記一般人常用的軟體並排在前面，前後兩段各自依最近收錄日期由新到舊', () => {
     const kev = summarizeKev(
       catalog([
         { dateAdded: '2026-11-25', vendorProject: 'Mitel', product: 'MiCollab' },
@@ -86,13 +86,13 @@ describe('summarizeKev', () => {
       ]),
       now,
     );
-    expect(kev?.products.map(({ name }) => name)).toEqual([
-      'Microsoft Office',
-      'Google Chromium',
-      'Apple Multiple Products',
-      'Mitel MiCollab',
-      'Drupal Core',
-      'Microsoft Exchange Server',
+    expect(kev?.products.map(({ name, everyday }) => `${name} ${everyday ? '常用' : '其他'}`)).toEqual([
+      'Microsoft Office 常用',
+      'Google Chromium 常用',
+      'Apple Multiple Products 常用',
+      'Mitel MiCollab 其他',
+      'Drupal Core 其他',
+      'Microsoft Exchange Server 其他',
     ]);
   });
 
@@ -118,7 +118,7 @@ describe('summarizeKev', () => {
       ]),
       now,
     );
-    expect(kev?.products[0].latestDate).toBe('2026-11-01');
+    expect(kev?.products[0]).toMatchObject({ latestDate: '2026-11-01', everyday: true });
   });
 
   it('產品名已含廠商名時不重複；大小寫或前後空白不同仍視為同一產品', () => {
@@ -146,7 +146,7 @@ describe('summarizeKev', () => {
     );
     expect(kev?.products).toEqual([
       windows(2, '2026-11-23', true),
-      { name: 'Apple iOS', count: 1, latestDate: '2026-11-22', ransomware: false },
+      { name: 'Apple iOS', count: 1, latestDate: '2026-11-22', ransomware: false, everyday: true },
     ]);
   });
 
