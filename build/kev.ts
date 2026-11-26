@@ -21,6 +21,43 @@ const CatalogSchema = z.object({
 });
 
 /**
+ * 一般人常用的軟體與設備：產品名（小寫）以這些字開頭時排在清單前面。手動維護；
+ * 只看產品名，同廠商的伺服器或企業產品（例如 Microsoft Exchange Server）不算。
+ */
+const EVERYDAY_PREFIXES = [
+  'microsoft windows',
+  'microsoft office',
+  'microsoft word',
+  'microsoft excel',
+  'microsoft powerpoint',
+  'microsoft outlook',
+  'microsoft edge',
+  'microsoft teams',
+  'google chrome',
+  'google chromium',
+  'google android',
+  'android',
+  'apple',
+  'mozilla firefox',
+  'mozilla thunderbird',
+  'adobe acrobat',
+  'adobe reader',
+  'rarlab winrar',
+  'winrar',
+  '7-zip',
+  'samsung mobile',
+  // 家用路由器
+  'tp-link',
+  'd-link',
+  'asus',
+];
+
+function isEveryday(name: string): boolean {
+  const lower = name.toLowerCase();
+  return EVERYDAY_PREFIXES.some((prefix) => lower.startsWith(prefix));
+}
+
+/**
  * 「廠商 產品」；產品名已以廠商名的第一個字開頭時只用產品名，避免重複
  * （例如 Google / Google Chrome、Barracuda Networks / Barracuda Email Security Gateway）。
  */
@@ -45,7 +82,7 @@ function daysBefore(today: string, daysAgo: number): string {
 
 /**
  * 整理近 30 天（含今天）收錄的漏洞：同一產品（廠商＋產品，不分大小寫）合併成一項，
- * 依最近收錄日期由新到舊排列；同一天時漏洞多的在前，再依名稱。
+ * 一般人常用的軟體（EVERYDAY_PREFIXES）排在前面，前後兩段各自依最近收錄日期由新到舊；同一天時漏洞多的在前，再依名稱。
  * 「今天」以美東日期為準：不論排程或推上 main 的部署在什麼時間執行，視窗都對齊 CISA 的日期。
  * 不是 KEV 目錄時回傳 null。
  */
@@ -72,7 +109,11 @@ export function summarizeKev(catalog: unknown, now: Date): KevFile | null {
   }
 
   const products = [...byProduct.values()].sort(
-    (a, b) => b.latestDate.localeCompare(a.latestDate) || b.count - a.count || a.name.localeCompare(b.name),
+    (a, b) =>
+      Number(isEveryday(b.name)) - Number(isEveryday(a.name)) ||
+      b.latestDate.localeCompare(a.latestDate) ||
+      b.count - a.count ||
+      a.name.localeCompare(b.name),
   );
   return { updatedAt: now.toISOString(), products };
 }

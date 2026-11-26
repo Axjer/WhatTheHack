@@ -63,14 +63,63 @@ describe('summarizeKev', () => {
     const kev = summarizeKev(
       catalog([
         { dateAdded: '2026-11-10', vendorProject: 'Fortinet', product: 'FortiOS' },
-        { dateAdded: '2026-11-21', vendorProject: 'Apple', product: 'iOS' },
+        { dateAdded: '2026-11-21', vendorProject: 'Ivanti', product: 'Connect Secure' },
         { dateAdded: '2026-11-21', vendorProject: 'Cisco', product: 'IOS XE' },
         { dateAdded: '2026-11-15', vendorProject: 'Cisco', product: 'IOS XE' },
-        { dateAdded: '2026-11-21', vendorProject: 'Adobe', product: 'Acrobat' },
+        { dateAdded: '2026-11-21', vendorProject: 'Atlassian', product: 'Confluence' },
       ]),
       now,
     );
-    expect(names(kev)).toEqual(['Cisco IOS XE 2', 'Adobe Acrobat 1', 'Apple iOS 1', 'Fortinet FortiOS 1']);
+    expect(names(kev)).toEqual(['Cisco IOS XE 2', 'Atlassian Confluence 1', 'Ivanti Connect Secure 1', 'Fortinet FortiOS 1']);
+  });
+
+  it('一般人常用的軟體排在前面，前後兩段各自依最近收錄日期由新到舊', () => {
+    const kev = summarizeKev(
+      catalog([
+        { dateAdded: '2026-11-25', vendorProject: 'Mitel', product: 'MiCollab' },
+        { dateAdded: '2026-11-10', vendorProject: 'Google', product: 'Chromium' },
+        { dateAdded: '2026-11-24', vendorProject: 'Drupal', product: 'Core' },
+        { dateAdded: '2026-11-04', vendorProject: 'Apple', product: 'Multiple Products' },
+        { dateAdded: '2026-11-12', vendorProject: 'Microsoft', product: 'Office' },
+        // 同廠商的伺服器產品不算一般人常用
+        { dateAdded: '2026-11-23', vendorProject: 'Microsoft', product: 'Exchange Server' },
+      ]),
+      now,
+    );
+    expect(kev?.products.map(({ name }) => name)).toEqual([
+      'Microsoft Office',
+      'Google Chromium',
+      'Apple Multiple Products',
+      'Mitel MiCollab',
+      'Drupal Core',
+      'Microsoft Exchange Server',
+    ]);
+  });
+
+  it.each([
+    ['Microsoft', 'Windows'],
+    ['Microsoft', 'Edge'],
+    ['Google', 'Chrome'],
+    ['Google', 'Android'],
+    ['Android', 'Framework'],
+    ['Apple', 'iOS'],
+    ['Mozilla', 'Firefox'],
+    ['Adobe', 'Acrobat and Reader'],
+    ['RARLAB', 'WinRAR'],
+    ['7-Zip', '7-Zip'],
+    ['Samsung', 'Mobile Devices'],
+    ['TP-Link', 'Archer AX21'],
+    ['D-Link', 'DIR-859 Router'],
+    ['ASUS', 'RT-AX55'],
+  ])('%s %s 算一般人常用，排在前面', (vendorProject, product) => {
+    const kev = summarizeKev(
+      catalog([
+        { dateAdded: '2026-11-25', vendorProject: 'Mitel', product: 'MiCollab' },
+        { dateAdded: '2026-11-01', vendorProject, product },
+      ]),
+      now,
+    );
+    expect(kev?.products[0].latestDate).toBe('2026-11-01');
   });
 
   it('產品名已含廠商名時不重複；大小寫或前後空白不同仍視為同一產品', () => {
