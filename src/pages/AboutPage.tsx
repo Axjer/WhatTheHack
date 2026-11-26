@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Verdict } from '../analysis/analyzeUrl';
 import ExternalIcon from '../components/ExternalIcon';
-import { repoUrl } from '../components/Footer';
 import { interactiveClass, textLinkClass } from '../styles';
 import { verdictLight } from '../verdictLight';
 
@@ -283,18 +282,6 @@ export default function AboutPage() {
             <p className="text-lg font-medium">你輸入的網址不會離開你的瀏覽器。</p>
             <p>
               打開網址分析頁時，瀏覽器會先下載整份惡意網址清單，之後的比對全部在你的裝置上完成。你輸入的網址不會傳給本站或任何第三方，也不會被儲存。
-            </p>
-            <p>
-              本站不需要註冊或登入，也沒有廣告或追蹤程式。網頁字型由 Google Fonts 提供：載入頁面時，你的瀏覽器會連到 Google 下載字型，但不會帶上你輸入的內容。
-            </p>
-            <p>
-              本站的原始碼公開在{' '}
-              <a href={repoUrl} target="_blank" rel="noopener noreferrer" className={textLinkClass}>
-                GitHub
-                <span className="sr-only">（在新分頁開啟）</span>
-                <ExternalIcon />
-              </a>
-              ，任何人都可以檢查。
             </p>
           </Section>
 
