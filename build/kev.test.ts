@@ -1,70 +1,183 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import type { KevFile } from '../src/data/kev.ts';
+import type { KevFile, KevProduct } from '../src/data/kev.ts';
 import { summarizeKev, updateKev } from './kev.ts';
 
 /** 每日流程在台灣早上 06:07（UTC 前一天 22:07）執行；這天的 UTC 日期是 11/23 */
 const now = new Date('2026-11-23T22:07:00.000Z');
 
-/** 假的 KEV 目錄：每個日期代表一筆新增 */
-function catalog(dates: string[]) {
+/** 假的 KEV 目錄的一筆；沒指定廠商與產品時是 Microsoft Windows */
+type Entry = { dateAdded: string; vendorProject?: string; product?: string; knownRansomwareCampaignUse?: string };
+
+/** 假的 KEV 目錄；只給日期的項目是 Microsoft Windows */
+function catalog(entries: (Entry | string)[]) {
   return {
     title: 'CISA Catalog of Known Exploited Vulnerabilities',
-    vulnerabilities: dates.map((dateAdded, index) => ({
-      cveID: `CVE-2026-${1000 + index}`,
-      vendorProject: 'Microsoft',
-      product: 'Windows',
-      dateAdded,
-    })),
+    vulnerabilities: entries.map((entry, index) => {
+      const {
+        dateAdded,
+        vendorProject = 'Microsoft',
+        product = 'Windows',
+        knownRansomwareCampaignUse = 'Unknown',
+      } = typeof entry === 'string' ? { dateAdded: entry } : entry;
+      return {
+        cveID: `CVE-2026-${1000 + index}`,
+        vendorProject,
+        product,
+        vulnerabilityName: 'Some Vulnerability',
+        dateAdded,
+        shortDescription: 'Some description.',
+        knownRansomwareCampaignUse,
+      };
+    }),
   };
 }
 
-/** 11/17 到 11/23 每天的筆數 */
-function week(counts: number[]) {
-  return counts.map((count, index) => ({ date: `2026-11-${17 + index}`, count }));
+function windows(count: number, latestDate: string, ransomware = false): KevProduct {
+  return { name: 'Microsoft Windows', count, latestDate, ransomware };
+}
+
+/** 清單的「名稱 漏洞數」，方便比對排序 */
+function names(kev: KevFile | null) {
+  return kev?.products.map(({ name, count }) => `${name} ${count}`);
 }
 
 describe('summarizeKev', () => {
-  it('近 7 天（含今天）每天新增的筆數，由舊到新', () => {
+  it('近 30 天（含今天）同一產品的漏洞合併成一項，記下漏洞數與最近收錄日期', () => {
     const kev = summarizeKev(
       catalog([
+        '2026-11-20',
         '2026-11-23',
-        '2026-11-23',
-        '2026-11-21',
-        '2026-11-17',
-        '2026-11-16', // 8 天前，不算
+        '2026-10-25', // 含今天往前第 30 天，算
+        '2026-10-24', // 第 31 天，不算
       ]),
       now,
     );
     expect(kev).toEqual({
       updatedAt: '2026-11-23T22:07:00.000Z',
-      daily: week([1, 0, 0, 0, 1, 0, 2]),
+      products: [windows(3, '2026-11-23')],
     });
+  });
+
+  it('依最近收錄日期由新到舊排列；同一天時漏洞多的在前，再依名稱', () => {
+    const kev = summarizeKev(
+      catalog([
+        { dateAdded: '2026-11-10', vendorProject: 'Fortinet', product: 'FortiOS' },
+        { dateAdded: '2026-11-21', vendorProject: 'Ivanti', product: 'Connect Secure' },
+        { dateAdded: '2026-11-21', vendorProject: 'Cisco', product: 'IOS XE' },
+        { dateAdded: '2026-11-15', vendorProject: 'Cisco', product: 'IOS XE' },
+        { dateAdded: '2026-11-21', vendorProject: 'Atlassian', product: 'Confluence' },
+      ]),
+      now,
+    );
+    expect(names(kev)).toEqual(['Cisco IOS XE 2', 'Atlassian Confluence 1', 'Ivanti Connect Secure 1', 'Fortinet FortiOS 1']);
+  });
+
+  it('一般人常用的軟體排在前面，前後兩段各自依最近收錄日期由新到舊', () => {
+    const kev = summarizeKev(
+      catalog([
+        { dateAdded: '2026-11-25', vendorProject: 'Mitel', product: 'MiCollab' },
+        { dateAdded: '2026-11-10', vendorProject: 'Google', product: 'Chromium' },
+        { dateAdded: '2026-11-24', vendorProject: 'Drupal', product: 'Core' },
+        { dateAdded: '2026-11-04', vendorProject: 'Apple', product: 'Multiple Products' },
+        { dateAdded: '2026-11-12', vendorProject: 'Microsoft', product: 'Office' },
+        // 同廠商的伺服器產品不算一般人常用
+        { dateAdded: '2026-11-23', vendorProject: 'Microsoft', product: 'Exchange Server' },
+      ]),
+      now,
+    );
+    expect(kev?.products.map(({ name }) => name)).toEqual([
+      'Microsoft Office',
+      'Google Chromium',
+      'Apple Multiple Products',
+      'Mitel MiCollab',
+      'Drupal Core',
+      'Microsoft Exchange Server',
+    ]);
+  });
+
+  it.each([
+    ['Microsoft', 'Windows'],
+    ['Microsoft', 'Edge'],
+    ['Google', 'Chrome'],
+    ['Android', 'Framework'],
+    ['Apple', 'iOS'],
+    ['Mozilla', 'Firefox'],
+    ['Adobe', 'Acrobat and Reader'],
+    ['RARLAB', 'WinRAR'],
+    ['7-Zip', '7-Zip'],
+    ['Samsung', 'Mobile Devices'],
+    ['TP-Link', 'Archer AX21'],
+    ['D-Link', 'DIR-859 Router'],
+    ['ASUS', 'RT-AX55'],
+  ])('%s %s 算一般人常用，排在前面', (vendorProject, product) => {
+    const kev = summarizeKev(
+      catalog([
+        { dateAdded: '2026-11-25', vendorProject: 'Mitel', product: 'MiCollab' },
+        { dateAdded: '2026-11-01', vendorProject, product },
+      ]),
+      now,
+    );
+    expect(kev?.products[0].latestDate).toBe('2026-11-01');
+  });
+
+  it('產品名已含廠商名時不重複；大小寫或前後空白不同仍視為同一產品', () => {
+    const kev = summarizeKev(
+      catalog([
+        { dateAdded: '2026-11-22', vendorProject: 'Google', product: 'Google Chrome' },
+        { dateAdded: '2026-11-21', vendorProject: 'google ', product: ' google chrome' },
+        { dateAdded: '2026-11-20', vendorProject: 'Microsoft', product: 'Windows' },
+        // 產品名只以廠商名的第一個字開頭，也不重複
+        { dateAdded: '2026-11-19', vendorProject: 'Barracuda Networks', product: 'Barracuda Email Security Gateway (ESG)' },
+      ]),
+      now,
+    );
+    expect(names(kev)).toEqual(['Google Chrome 2', 'Microsoft Windows 1', 'Barracuda Email Security Gateway (ESG) 1']);
+  });
+
+  it('任一漏洞已被勒索軟體利用（Known）→ 標記這個產品', () => {
+    const kev = summarizeKev(
+      catalog([
+        '2026-11-23',
+        { dateAdded: '2026-11-20', knownRansomwareCampaignUse: 'Known' },
+        { dateAdded: '2026-11-22', vendorProject: 'Apple', product: 'iOS' },
+      ]),
+      now,
+    );
+    expect(kev?.products).toEqual([
+      windows(2, '2026-11-23', true),
+      { name: 'Apple iOS', count: 1, latestDate: '2026-11-22', ransomware: false },
+    ]);
   });
 
   it('以美東日期當「今天」：UTC 凌晨部署（例如推上 main）時美國還是前一天，視窗不往後移', () => {
     const earlyUtc = new Date('2026-11-24T02:00:00.000Z'); // 美東 11/23 21:00
-    const kev = summarizeKev(catalog(['2026-11-23', '2026-11-17']), earlyUtc);
-    expect(kev?.daily).toEqual(week([1, 0, 0, 0, 0, 0, 1]));
+    const kev = summarizeKev(catalog(['2026-11-23', '2026-10-25']), earlyUtc);
+    expect(kev?.products).toEqual([windows(2, '2026-11-23')]);
   });
 
-  it('近 7 天都沒有新增 → 每天都是 0', () => {
-    expect(summarizeKev(catalog(['2026-11-01']), now)?.daily).toEqual(week([0, 0, 0, 0, 0, 0, 0]));
+  it('近 30 天都沒有新增 → 空清單', () => {
+    expect(summarizeKev(catalog(['2026-10-01']), now)?.products).toEqual([]);
+  });
+
+  it('不存 CVE 編號與 CISA 的英文描述', () => {
+    expect(JSON.stringify(summarizeKev(catalog(['2026-11-23']), now))).not.toMatch(/CVE-|Some description|Some Vulnerability/);
   });
 
   it('不是 KEV 目錄（例如錯誤頁或格式改變）→ null，讓更新腳本沿用上一份', () => {
     expect(summarizeKev({ message: 'Access Denied' }, now)).toBeNull();
     expect(summarizeKev({ vulnerabilities: [] }, now)).toBeNull();
+    expect(summarizeKev({ vulnerabilities: [{ dateAdded: '2026-11-23' }] }, now)).toBeNull();
     expect(summarizeKev(null, now)).toBeNull();
   });
 });
 
 describe('updateKev：CISA 抓不到時，第一天沿用上一份，連續第二天才改抓 GitHub 上的官方副本', () => {
   const cisaCatalog = catalog(['2026-11-23']);
-  const mirrorCatalog = catalog(['2026-11-23', '2026-11-23']);
-  const fromCisa = week([0, 0, 0, 0, 0, 0, 1]);
-  const fromMirror = week([0, 0, 0, 0, 0, 0, 2]);
-  const yesterday: KevFile = { updatedAt: '2026-11-22T22:07:00.000Z', daily: week([3, 0, 0, 0, 0, 0, 0]) };
+  const mirrorCatalog = catalog(['2026-11-23', '2026-11-22']);
+  const fromCisa = [windows(1, '2026-11-23')];
+  const fromMirror = [windows(2, '2026-11-23')];
+  const yesterday: KevFile = { updatedAt: '2026-11-22T22:07:00.000Z', products: [windows(3, '2026-11-20')] };
 
   /** 回傳兩個抓取函式，並記錄副本被抓了幾次 */
   function sources(cisa: unknown, mirror: unknown) {
@@ -82,7 +195,7 @@ describe('updateKev：CISA 抓不到時，第一天沿用上一份，連續第�
   it('CISA 抓得到 → 用 CISA 的資料，不抓副本，失敗紀錄清掉', async () => {
     const { calls, fetchers } = sources(cisaCatalog, mirrorCatalog);
     const kev = await updateKev({ ...fetchers, previous: { ...yesterday, cisaFailedSince: '2026-11-21T22:07:00.000Z' }, now });
-    expect(kev).toEqual({ updatedAt: '2026-11-23T22:07:00.000Z', daily: fromCisa, cisaFailedSince: null });
+    expect(kev).toEqual({ updatedAt: '2026-11-23T22:07:00.000Z', products: fromCisa, cisaFailedSince: null });
     expect(calls.mirror).toBe(0);
   });
 
@@ -105,7 +218,7 @@ describe('updateKev：CISA 抓不到時，第一天沿用上一份，連續第�
     const kev = await updateKev({ ...fetchers, previous: { ...yesterday, cisaFailedSince: '2026-11-22T22:07:00.000Z' }, now });
     expect(kev).toEqual({
       updatedAt: '2026-11-23T22:07:00.000Z',
-      daily: fromMirror,
+      products: fromMirror,
       cisaFailedSince: '2026-11-22T22:07:00.000Z',
     });
   });
@@ -117,20 +230,20 @@ describe('updateKev：CISA 抓不到時，第一天沿用上一份，連續第�
   });
 
   it('沒有上一份可沿用 → 直接改抓副本；副本也抓不到就回傳 null', async () => {
-    expect((await updateKev({ ...sources(null, mirrorCatalog).fetchers, previous: null, now }))?.daily).toEqual(fromMirror);
+    expect((await updateKev({ ...sources(null, mirrorCatalog).fetchers, previous: null, now }))?.products).toEqual(fromMirror);
     expect(await updateKev({ ...sources(null, null).fetchers, previous: null, now })).toBeNull();
   });
 
   it('上一份是從未更新過的佔位檔 → 視為沒有上一份，直接改抓副本', async () => {
-    const placeholder: KevFile = { updatedAt: null, daily: [] };
+    const placeholder: KevFile = { updatedAt: null, products: [] };
     const kev = await updateKev({ ...sources(null, mirrorCatalog).fetchers, previous: placeholder, now });
-    expect(kev?.daily).toEqual(fromMirror);
+    expect(kev?.products).toEqual(fromMirror);
   });
 
   it('第一次失敗在延遲的排程（台灣 11/23 中午），隔天早上的排程只隔 18 小時，仍算第二天 → 改抓副本', async () => {
     const previous = { ...yesterday, cisaFailedSince: '2026-11-23T04:00:00.000Z' };
     // now 是台灣 11/24 06:07
     const kev = await updateKev({ ...sources(null, mirrorCatalog).fetchers, previous, now });
-    expect(kev?.daily).toEqual(fromMirror);
+    expect(kev?.products).toEqual(fromMirror);
   });
 });
