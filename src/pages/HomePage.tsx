@@ -64,8 +64,11 @@ function useStatCounts(): StatCounts {
   return counts;
 }
 
-/** 數據卡大數字的字級：768px 三欄時卡片最窄，縮一級；「—」與數字共用 */
-const statValueSize = 'text-5xl md:text-4xl lg:text-6xl';
+/**
+ * 數據卡大數字的字級，「—」與數字共用：跟著卡片內容寬度縮放（卡片是 @container），最大 6xl（3.75rem）。
+ * 「100,000+ 筆」約 4.8 個字高寬，19cqi 讓它在任何寬度都排得下一行；單位固定是數字的一半大。
+ */
+const statValueSize = 'text-[length:min(3.75rem,19cqi)] leading-none tracking-tight';
 
 /** 頁面最底部的兩個行動區塊 */
 const actions: { title: string; description: string; link: PageLink }[] = [
@@ -83,13 +86,24 @@ const actions: { title: string; description: string; link: PageLink }[] = [
 
 type HomeSectionProps = {
   title: string;
-  /** 上下留白：tight 用於相鄰的白底區塊，避免中間空一大片 */
-  spacing?: 'default' | 'tight';
+  /**
+   * 上下留白。groupTop／groupBottom 用於視為同一組的相鄰白底區塊（數據卡＋行動區塊）：
+   * 外側照常留白，兩塊之間只留卡片間距的大小，讀起來是同一組
+   */
+  spacing?: keyof typeof sectionSpacingClass;
   /** 標題只給輔助科技讀取，畫面上不顯示 */
   hideTitle?: boolean;
+  /** 標題下方的一句說明（只在標題顯示時使用） */
+  subtitle?: string;
   /** surface：頁面冷白底；raised：白底；navy：滿版深海軍藍底、白字（交錯排版） */
   tone?: keyof typeof sectionToneClass;
   children: ReactNode;
+};
+
+const sectionSpacingClass = {
+  default: 'py-20 md:py-32',
+  groupTop: 'pt-14 pb-6 md:pt-20 md:pb-8',
+  groupBottom: 'pt-6 pb-14 md:pt-8 md:pb-20',
 };
 
 const sectionToneClass = {
@@ -99,18 +113,31 @@ const sectionToneClass = {
 };
 
 /** 主視覺之後的內容區塊：以 H2 命名；背景滿版，內容置中 */
-function HomeSection({ title, hideTitle = false, spacing = 'default', tone = 'surface', children }: HomeSectionProps) {
+function HomeSection({
+  title,
+  hideTitle = false,
+  subtitle,
+  spacing = 'default',
+  tone = 'surface',
+  children,
+}: HomeSectionProps) {
   const titleId = useId();
   return (
     <section aria-labelledby={titleId} className={sectionToneClass[tone]}>
-      <div
-        className={`mx-auto w-full max-w-6xl px-4 md:px-6 ${
-          spacing === 'tight' ? 'py-14 md:py-20' : 'py-20 md:py-32'
-        }`}
-      >
-        <h2 id={titleId} className={hideTitle ? 'sr-only' : 'reveal font-semibold'}>
-          {title}
-        </h2>
+      <div className={`mx-auto w-full max-w-6xl px-4 md:px-6 ${sectionSpacingClass[spacing]}`}>
+        {hideTitle ? (
+          <h2 id={titleId} className="sr-only">
+            {title}
+          </h2>
+        ) : (
+          // 看得到的區塊標題一律置中，與下方卡片留出一段距離
+          <header className="mb-10 text-center md:mb-14">
+            <h2 id={titleId} className="text-3xl font-semibold md:text-4xl">
+              {title}
+            </h2>
+            {subtitle && <p className="mx-auto mt-4 max-w-2xl text-text-secondary">{subtitle}</p>}
+          </header>
+        )}
         {children}
       </div>
     </section>
@@ -214,42 +241,56 @@ export default function HomePage() {
         </ul>
       </HomeSection>
 
-      <HomeSection title="平台數據" tone="raised" spacing="tight">
-        <ul className="mt-12 grid gap-10 md:grid-cols-3 md:gap-12">
-          {stats.map(({ value, unit, label }) => (
-            <li key={label} className="reveal rounded-xl bg-surface-sunken p-6 lg:p-8">
-              {value === null ? (
-                // 沒有數字：只顯示次要文字色的「—」，不帶單位，讀起來是「尚無資料」
-                <p className={`${statValueSize} font-semibold text-text-secondary`}>—</p>
-              ) : (
-                // 單位小一號、與數字基線對齊；單位放不下就整個換行，數字不會被拆開
-                <p className="flex flex-wrap items-baseline gap-x-2 font-semibold text-text-primary">
-                  <span className={`${statValueSize} tabular-nums`}>{value}</span>
-                  <span className="text-2xl md:text-xl lg:text-3xl">{unit}</span>
-                </p>
-              )}
-              <p className="mt-4 text-text-secondary">{label}</p>
-            </li>
-          ))}
-        </ul>
-      </HomeSection>
+      {/*
+        痛點區之後的白色區塊（數據卡＋行動區塊）至少一個畫面高、內容垂直置中：
+        捲到頁面最底時畫面只看到白色區塊與頁尾，不會露出上方的深藍痛點區
+      */}
+      <div className="flex min-h-svh flex-col justify-center bg-surface-raised">
+        <HomeSection
+          title="每天持續更新的資安防護網"
+          subtitle="串接全球公開威脅資料庫，掌握最新漏洞動態"
+          tone="raised"
+          spacing="groupTop"
+        >
+          {/* 卡片間距與下方行動區塊一致（gap-6），讓卡片盡量寬 */}
+          <ul className="grid gap-6 md:grid-cols-3">
+            {stats.map(({ value, unit, label }) => (
+              <li key={label} className="@container rounded-xl bg-surface-muted p-6 lg:px-8 lg:py-10">
+                {value === null ? (
+                  // 沒有數字：只顯示次要文字色的「—」，不帶單位，讀起來是「尚無資料」
+                  <p className={`${statValueSize} font-semibold text-text-secondary`}>—</p>
+                ) : (
+                  // 單位是數字的一半大、與數字基線對齊；字級跟著卡片寬度縮放，整行排在一行
+                  <p
+                    className={`${statValueSize} flex items-baseline gap-x-[0.15em] font-semibold whitespace-nowrap text-text-primary`}
+                  >
+                    <span className="tabular-nums">{value}</span>
+                    <span className="text-[0.5em] tracking-normal">{unit}</span>
+                  </p>
+                )}
+                <p className="mt-4 text-text-secondary">{label}</p>
+              </li>
+            ))}
+          </ul>
+        </HomeSection>
 
-      <HomeSection title="收到可疑連結？" hideTitle tone="raised" spacing="tight">
-        <ul className="grid gap-6 md:grid-cols-2">
-          {actions.map(({ title, description, link }) => (
-            <li key={title} className="reveal flex flex-col rounded-xl bg-surface-sunken p-6 md:p-10">
-              <h3 className="text-2xl font-semibold md:text-3xl">{title}</h3>
-              <p className="mt-3 mb-8 text-text-secondary">{description}</p>
-              <Link to={link.to} className={`mt-auto self-start ${buttonClass('navy')} font-semibold!`}>
-                {link.label}
-                {/* 兩顆按鈕文字相同，附上目的地讓螢幕閱讀器分得出來 */}
-                <span className="sr-only">{title}</span>
-                <ArrowIcon />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </HomeSection>
+        <HomeSection title="兩大核心功能" tone="raised" spacing="groupBottom">
+          <ul className="grid gap-6 md:grid-cols-2">
+            {actions.map(({ title, description, link }) => (
+              <li key={title} className="flex flex-col rounded-xl bg-surface-muted p-6 md:p-10">
+                <h3 className="text-2xl font-semibold md:text-3xl">{title}</h3>
+                <p className="mt-3 mb-8 text-text-secondary">{description}</p>
+                <Link to={link.to} className={`mt-auto self-start ${buttonClass('navy')} font-semibold!`}>
+                  {link.label}
+                  {/* 兩顆按鈕文字相同，附上目的地讓螢幕閱讀器分得出來 */}
+                  <span className="sr-only">{title}</span>
+                  <ArrowIcon />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </HomeSection>
+      </div>
     </>
   );
 }
