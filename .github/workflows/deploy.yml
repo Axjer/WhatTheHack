@@ -3,8 +3,10 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-  # 每天 22:07 UTC（台灣時間 06:07）更新惡意網址清單、新聞與 KEV 統計並重新部署。
-  # 避開整點：GitHub 排程在整點最擁擠，常延遲好幾個小時。實際執行時間不保證，所以頁面只寫「每日更新」。
+  # 每日更新（惡意網址清單、新聞、KEV 統計）由 cron-job.org 在台灣時間 06:07 呼叫 GitHub API 觸發 workflow_dispatch，
+  # 設定與 token 更新方式見 docs/daily-update.md。
+  # GitHub 排程留作備援：它在這個 repo 常延遲約 6 小時，偶爾會被丟掉，所以不當主要觸發方式。
+  # 多跑一次沒有壞處（已有摘要的新聞會沿用）。實際執行時間不保證，所以頁面只寫「每日更新」。
   schedule:
     - cron: '7 22 * * *'
   workflow_dispatch:
