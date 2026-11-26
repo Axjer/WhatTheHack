@@ -273,7 +273,7 @@ export default function HomePage() {
             ))}
           </ul>
         </HomeSection>
-  
+
         <HomeSection title="兩大核心功能" tone="raised" spacing="groupBottom">
           <ul className="grid gap-6 md:grid-cols-2">
             {actions.map(({ title, description, link }) => (
