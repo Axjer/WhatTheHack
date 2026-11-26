@@ -1,7 +1,8 @@
 import { useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { loadKev } from '../data/loadKev';
-import { loadStats } from '../data/stats';
+import { loadStats } from '../data/loadStats';
+import { formatApproxCount } from './formatApproxCount';
 import { buttonClass } from '../styles';
 
 /** 連到站內某頁的按鈕 */
@@ -63,16 +64,8 @@ function useStatCounts(): StatCounts {
   return counts;
 }
 
-/**
- * 數據卡的大數字：只保留最高位、其餘捨去，再加「+」（90,123 → 90,000+、38 → 30+）。
- * 數字每天會變，往下取整才不會誇大；剛好整數或個位數時照實顯示、不加「+」。
- */
-export function formatApproxCount(count: number | null): string {
-  if (count === null) return '—';
-  const magnitude = 10 ** (String(Math.trunc(count)).length - 1);
-  const floored = Math.floor(count / magnitude) * magnitude;
-  return `${floored.toLocaleString('zh-TW')}${floored < count ? '+' : ''}`;
-}
+/** 數據卡大數字的字級：768px 三欄時卡片最窄，縮一級；「—」與數字共用 */
+const statValueSize = 'text-5xl md:text-4xl lg:text-6xl';
 
 /** 頁面最底部的兩個行動區塊 */
 const actions: { title: string; description: string; link: PageLink }[] = [
@@ -225,13 +218,13 @@ export default function HomePage() {
         <ul className="mt-12 grid gap-10 md:grid-cols-3 md:gap-12">
           {stats.map(({ value, unit, label }) => (
             <li key={label} className="reveal rounded-xl bg-surface-sunken p-6 lg:p-8">
-              {value === '—' ? (
-                // 讀不到資料：只顯示次要文字色的「—」，不帶單位，讀起來是「尚無資料」
-                <p className="text-5xl font-semibold text-text-secondary md:text-4xl lg:text-6xl">—</p>
+              {value === null ? (
+                // 沒有數字：只顯示次要文字色的「—」，不帶單位，讀起來是「尚無資料」
+                <p className={`${statValueSize} font-semibold text-text-secondary`}>—</p>
               ) : (
-                // 單位小一號、與數字基線對齊；768px 三欄時卡片最窄，數字縮一級，單位放不下就整個換行
+                // 單位小一號、與數字基線對齊；單位放不下就整個換行，數字不會被拆開
                 <p className="flex flex-wrap items-baseline gap-x-2 font-semibold text-text-primary">
-                  <span className="text-5xl tabular-nums md:text-4xl lg:text-6xl">{value}</span>
+                  <span className={`${statValueSize} tabular-nums`}>{value}</span>
                   <span className="text-2xl md:text-xl lg:text-3xl">{unit}</span>
                 </p>
               )}

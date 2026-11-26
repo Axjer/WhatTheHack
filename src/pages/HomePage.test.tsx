@@ -5,13 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import type { KevFile } from '../data/kev';
 import type { StatsFile } from '../data/stats';
-import { formatApproxCount } from './HomePage';
 
 /** 假的首頁統計檔與 KEV 統計檔；fails 時模擬讀不到 */
 let fakeStats: StatsFile | 'fails';
 let fakeKev: KevFile | 'fails';
 
-vi.mock('../data/stats', () => ({
+vi.mock('../data/loadStats', () => ({
   loadStats: () => (fakeStats === 'fails' ? Promise.reject(new Error('HTTP 404')) : Promise.resolve(fakeStats)),
 }));
 
@@ -86,19 +85,6 @@ describe('痛點與解法', () => {
   });
 });
 
-describe('formatApproxCount', () => {
-  it.each([
-    [90123, '90,000+'],
-    [38, '30+'],
-    [30, '30'],
-    [100000, '100,000'],
-    [6, '6'],
-    [null, '—'],
-  ])('%s → %s', (count, expected) => {
-    expect(formatApproxCount(count)).toBe(expected);
-  });
-});
-
 describe('數據卡', () => {
   it('有三張數據卡', () => {
     renderHome();
@@ -122,18 +108,27 @@ describe('數據卡', () => {
     expect(within(cards[2]).getByText('自動更新一次')).toBeInTheDocument();
   });
 
-  it('讀不到資料時顯示「—」，不顯示 0', async () => {
+  // 兩個檔案依序載入：等另一張卡出現數字，代表失敗的那個也已處理完
+  it('讀不到統計檔時，惡意網址卡顯示「—」，不顯示 0', async () => {
     fakeStats = 'fails';
+    renderHome();
+    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
+
+    expect(await within(cards[1]).findByText('30+')).toBeInTheDocument();
+    expect(within(cards[0]).getByText('—')).toBeInTheDocument();
+    expect(within(cards[0]).queryByText('0')).not.toBeInTheDocument();
+    expect(within(cards[0]).queryByText('筆')).not.toBeInTheDocument();
+  });
+
+  it('讀不到 KEV 統計檔時，受攻擊軟體卡顯示「—」，不顯示 0', async () => {
     fakeKev = 'fails';
     renderHome();
-    const section = screen.getByRole('region', { name: '平台數據' });
-    const cards = within(section).getAllByRole('listitem');
+    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
 
-    // 等載入失敗處理完
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(within(cards[0]).getByText('—')).toBeInTheDocument();
+    expect(await within(cards[0]).findByText('90,000+')).toBeInTheDocument();
     expect(within(cards[1]).getByText('—')).toBeInTheDocument();
-    expect(within(section).queryByText(/^0 /)).not.toBeInTheDocument();
+    expect(within(cards[1]).queryByText('0')).not.toBeInTheDocument();
+    expect(within(cards[1]).queryByText('項')).not.toBeInTheDocument();
   });
 
   it('惡意網址筆數為 0 時顯示「—」', async () => {
