@@ -269,13 +269,13 @@ export default function AboutPage() {
             </p>
             <VerdictLadder />
             <p className="text-sm text-text-secondary">
-              本頁與分析報告中的網址都以 defang 格式顯示：把 <ExampleUrl>http</ExampleUrl> 改成{' '}
+              分析報告與本頁的範例網址都以 defang 格式顯示：把 <ExampleUrl>http</ExampleUrl> 改成{' '}
               <ExampleUrl>hxxp</ExampleUrl>、把「.」改成 <ExampleUrl>[.]</ExampleUrl>，網址就不會被誤點開。
             </p>
           </Section>
 
           <Section id="sources">
-            <p>本站使用四個公開的資料來源，每天自動更新一次。各頁面會顯示最近一次的更新時間，超過 48 小時沒有更新時會提醒你。</p>
+            <p>本站使用四個公開的資料來源，每日自動更新。網址分析頁與最新情資頁會顯示最近一次的更新時間，超過 48 小時沒有更新時會提醒你。</p>
             <SourceList />
           </Section>
 
