@@ -1,5 +1,8 @@
-import { useId, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { loadKev } from '../data/loadKev';
+import { loadStats } from '../data/loadStats';
+import { formatApproxCount } from './formatApproxCount';
 import { buttonClass } from '../styles';
 
 /** 連到站內某頁的按鈕 */
@@ -7,31 +10,62 @@ type PageLink = { label: string; to: string };
 
 const painPoints = [
   {
+    problem: '怕誤點',
+    summary: '先查詢再點',
+    detail:
+      '簡訊、LINE 或 Email 裡的連結，點之前先貼上來。我們會比對惡意網址清單，也會檢查常見的可疑特徵，例如短網址或直接使用 IP 位址。',
+  },
+  {
     problem: '術語看不懂',
-    summary: '每個結果都是白話，還附下一步',
+    summary: '白話講結果',
     detail:
       '不用懂什麼是釣魚網站或惡意程式。網址分析只會給出三種判定結果：已知惡意、可疑、查無紀錄，每種結果都用日常說得懂的話說明原因，並告訴你下一步該怎麼做。',
   },
   {
-    problem: '怕誤點',
-    summary: '先查再點',
+    problem: '跟不上資安消息',
+    summary: '只看重要的',
     detail:
-      '收到簡訊或訊息裡的連結，先別急著點。把網址貼上來，我們會檢查它是否在惡意網址清單中，也會看它有沒有使用短網址、直接用 IP 位址等可疑的警訊，再告訴你能不能點。',
-  },
-  {
-    problem: '怕隱私外洩',
-    summary: '輸入不會送出瀏覽器',
-    detail:
-      '你貼上的網址只會在自己的瀏覽器裡比對，不會傳到任何伺服器，也不會被儲存。關掉頁面後，輸入的內容就消失了，不用擔心被別人看到。',
+      '每天挑出三則最重要的資安新聞，由 AI 依原文整理成白話摘要；同時列出近 30 天正被攻擊的軟體。',
   },
 ];
 
-/** 佔位內容：數據卡要放什麼仍是待決事項（見 CLAUDE.md） */
-const stats = [
-  { value: '—', label: '數據待定' },
-  { value: '—', label: '數據待定' },
-  { value: '—', label: '數據待定' },
-];
+/**
+ * 數據卡的數字：載入中或讀不到檔案時為 null（顯示「—」）。
+ * 惡意網址筆數為 0 也視為 null，以免讀成「沒有惡意網址」；KEV 產品數則照實顯示（含 0）。
+ */
+type StatCounts = { maliciousUrls: number | null; kevProducts: number | null };
+
+function useStatCounts(): StatCounts {
+  const [counts, setCounts] = useState<StatCounts>({ maliciousUrls: null, kevProducts: null });
+
+  useEffect(() => {
+    let active = true;
+    const update = (patch: Partial<StatCounts>) => {
+      if (active) setCounts((current) => ({ ...current, ...patch }));
+    };
+    loadStats().then(
+      ({ maliciousUrlCount }) => {
+        if (Number.isInteger(maliciousUrlCount) && maliciousUrlCount > 0) update({ maliciousUrls: maliciousUrlCount });
+      },
+      () => {},
+    );
+    loadKev().then(
+      // 統計檔裡有幾項就顯示幾項（含 0、含過期的檔案）；只有讀不到檔案才顯示「—」
+      ({ products }) => {
+        if (Array.isArray(products)) update({ kevProducts: products.length });
+      },
+      () => {},
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return counts;
+}
+
+/** 數據卡大數字的字級：768px 三欄時卡片最窄，縮一級；「—」與數字共用 */
+const statValueSize = 'text-5xl md:text-4xl lg:text-6xl';
 
 /** 頁面最底部的兩個行動區塊 */
 const actions: { title: string; description: string; link: PageLink }[] = [
@@ -136,6 +170,15 @@ function VerdictDemo() {
 }
 
 export default function HomePage() {
+  const counts = useStatCounts();
+  const stats = [
+    { value: formatApproxCount(counts.maliciousUrls), unit: '筆', label: '已知惡意網址' },
+    // 「近期」指 KEV 統計的近 30 天
+    { value: formatApproxCount(counts.kevProducts), unit: '項', label: '近期受攻擊軟體' },
+    // 每日更新一次（cron-job.org 觸發）：不寫「即時」
+    { value: '24', unit: '小時', label: '自動更新一次' },
+  ];
+
   return (
     <>
       <section
@@ -173,10 +216,18 @@ export default function HomePage() {
 
       <HomeSection title="平台數據" tone="raised" spacing="tight">
         <ul className="mt-12 grid gap-10 md:grid-cols-3 md:gap-12">
-          {stats.map(({ value, label }, index) => (
-            <li key={index} className="reveal rounded-xl bg-surface-sunken p-6 md:p-8">
-              {/* 佔位期間用次要文字色，讀起來是「尚無資料」；換成真實數字時改回主要文字色 */}
-              <p className="text-5xl font-semibold tabular-nums text-text-secondary md:text-6xl">{value}</p>
+          {stats.map(({ value, unit, label }) => (
+            <li key={label} className="reveal rounded-xl bg-surface-sunken p-6 lg:p-8">
+              {value === null ? (
+                // 沒有數字：只顯示次要文字色的「—」，不帶單位，讀起來是「尚無資料」
+                <p className={`${statValueSize} font-semibold text-text-secondary`}>—</p>
+              ) : (
+                // 單位小一號、與數字基線對齊；單位放不下就整個換行，數字不會被拆開
+                <p className="flex flex-wrap items-baseline gap-x-2 font-semibold text-text-primary">
+                  <span className={`${statValueSize} tabular-nums`}>{value}</span>
+                  <span className="text-2xl md:text-xl lg:text-3xl">{unit}</span>
+                </p>
+              )}
               <p className="mt-4 text-text-secondary">{label}</p>
             </li>
           ))}

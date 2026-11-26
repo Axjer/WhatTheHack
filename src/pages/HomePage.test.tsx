@@ -1,8 +1,32 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
+import type { KevFile } from '../data/kev';
+import type { StatsFile } from '../data/stats';
+
+/** 假的首頁統計檔與 KEV 統計檔；fails 時模擬讀不到 */
+let fakeStats: StatsFile | 'fails';
+let fakeKev: KevFile | 'fails';
+
+vi.mock('../data/loadStats', () => ({
+  loadStats: () => (fakeStats === 'fails' ? Promise.reject(new Error('HTTP 404')) : Promise.resolve(fakeStats)),
+}));
+
+vi.mock('../data/loadKev', () => ({
+  loadKev: () => (fakeKev === 'fails' ? Promise.reject(new Error('HTTP 404')) : Promise.resolve(fakeKev)),
+}));
+
+const kevProduct = { count: 1, latestDate: '2026-11-20', ransomware: false, everyday: true };
+
+beforeEach(() => {
+  fakeStats = { maliciousUrlCount: 90123 };
+  fakeKev = {
+    updatedAt: '2026-11-26T00:00:00.000Z',
+    products: Array.from({ length: 38 }, (_, index) => ({ name: `Vendor Product ${index}`, ...kevProduct })),
+  };
+});
 
 function renderHome() {
   return render(
@@ -49,7 +73,7 @@ describe('痛點與解法', () => {
     const painPoints = within(section)
       .getAllByRole('heading', { level: 3 })
       .map((heading) => heading.textContent);
-    expect(painPoints).toEqual(['術語看不懂', '怕誤點', '怕隱私外洩']);
+    expect(painPoints).toEqual(['怕誤點', '術語看不懂', '跟不上資安消息']);
   });
 
   it('每個痛點只有文字說明，卡片裡沒有連結或按鈕', () => {
@@ -66,6 +90,74 @@ describe('數據卡', () => {
     renderHome();
     const section = screen.getByRole('region', { name: '平台數據' });
     expect(within(section).getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('數字往下取整並帶單位：惡意網址筆數、近期受攻擊軟體數、更新頻率', async () => {
+    renderHome();
+    const section = screen.getByRole('region', { name: '平台數據' });
+    const cards = within(section).getAllByRole('listitem');
+
+    expect(await within(cards[0]).findByText('90,000+')).toBeInTheDocument();
+    expect(within(cards[0]).getByText('筆')).toBeInTheDocument();
+    expect(within(cards[0]).getByText('已知惡意網址')).toBeInTheDocument();
+    expect(await within(cards[1]).findByText('30+')).toBeInTheDocument();
+    expect(within(cards[1]).getByText('項')).toBeInTheDocument();
+    expect(within(cards[1]).getByText('近期受攻擊軟體')).toBeInTheDocument();
+    expect(within(cards[2]).getByText('24')).toBeInTheDocument();
+    expect(within(cards[2]).getByText('小時')).toBeInTheDocument();
+    expect(within(cards[2]).getByText('自動更新一次')).toBeInTheDocument();
+  });
+
+  // 兩個檔案依序載入：等另一張卡出現數字，代表失敗的那個也已處理完
+  it('讀不到統計檔時，惡意網址卡顯示「—」，不顯示 0', async () => {
+    fakeStats = 'fails';
+    renderHome();
+    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
+
+    expect(await within(cards[1]).findByText('30+')).toBeInTheDocument();
+    expect(within(cards[0]).getByText('—')).toBeInTheDocument();
+    expect(within(cards[0]).queryByText('0')).not.toBeInTheDocument();
+    expect(within(cards[0]).queryByText('筆')).not.toBeInTheDocument();
+  });
+
+  it('讀不到 KEV 統計檔時，受攻擊軟體卡顯示「—」，不顯示 0', async () => {
+    fakeKev = 'fails';
+    renderHome();
+    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
+
+    expect(await within(cards[0]).findByText('90,000+')).toBeInTheDocument();
+    expect(within(cards[1]).getByText('—')).toBeInTheDocument();
+    expect(within(cards[1]).queryByText('0')).not.toBeInTheDocument();
+    expect(within(cards[1]).queryByText('項')).not.toBeInTheDocument();
+  });
+
+  it('惡意網址筆數為 0 時顯示「—」', async () => {
+    fakeStats = { maliciousUrlCount: 0 };
+    renderHome();
+    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
+
+    expect(await within(cards[1]).findByText('30+')).toBeInTheDocument();
+    expect(within(cards[0]).getByText('—')).toBeInTheDocument();
+  });
+
+  it('KEV 統計檔有幾項就顯示幾項，不論是否過期或從未更新', async () => {
+    fakeKev = {
+      updatedAt: null,
+      products: Array.from({ length: 41 }, (_, index) => ({ name: `Vendor Product ${index}`, ...kevProduct })),
+    };
+    renderHome();
+    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
+
+    expect(await within(cards[1]).findByText('40+')).toBeInTheDocument();
+  });
+
+  it('KEV 近 30 天沒有產品時照實顯示 0 項', async () => {
+    fakeKev = { updatedAt: '2026-11-26T00:00:00.000Z', products: [] };
+    renderHome();
+    const cards = within(screen.getByRole('region', { name: '平台數據' })).getAllByRole('listitem');
+
+    expect(await within(cards[1]).findByText('0')).toBeInTheDocument();
+    expect(within(cards[1]).getByText('項')).toBeInTheDocument();
   });
 });
 
