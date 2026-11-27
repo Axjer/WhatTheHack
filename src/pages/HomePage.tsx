@@ -77,12 +77,12 @@ const actions: { title: string; description: string; link: PageLink }[] = [
   {
     title: '網址分析',
     description: '貼上一個網址，馬上看到判定結果與建議',
-    link: { label: '了解更多', to: '/analyze' },
+    link: { label: '了解更多', to: '/about#verdict' },
   },
   {
     title: '最新情資',
     description: '每天整理值得注意的資安新聞，以及已遭駭客利用的漏洞',
-    link: { label: '了解更多', to: '/intel' },
+    link: { label: '了解更多', to: '/about#intel' },
   },
 ];
 

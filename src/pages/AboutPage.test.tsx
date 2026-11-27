@@ -1,11 +1,11 @@
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import AboutPage from './AboutPage';
 
-function renderPage() {
+function renderPage(path = '/about') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[path]}>
       <AboutPage />
     </MemoryRouter>,
   );
@@ -137,5 +137,28 @@ describe('來源與說明頁', () => {
       const id = link.getAttribute('href')!.slice(1);
       expect(document.getElementById(id)?.tagName).toBe('SECTION');
     }
+  });
+});
+
+describe('從別頁帶著段落錨點進來', () => {
+  // jsdom 沒有 scrollIntoView：每個測試自己裝上模擬版，結束後拿掉
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  it('網址帶有段落錨點時，捲到那一段', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    renderPage('/about#intel');
+
+    expect(scrollIntoView.mock.contexts).toEqual([section('最新情資怎麼整理')]);
+  });
+
+  it('沒有錨點時不捲動', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    renderPage();
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 });
