@@ -304,8 +304,13 @@ export function HeroCarousel() {
       aria-labelledby="hero-title"
       aria-roledescription="輪播"
       className="flex min-h-[calc(100svh-4.5rem)] flex-col bg-surface-hero"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      // 只有真的滑鼠才算「停在上面」：手機點擊也會觸發移入，卻不一定觸發移出，會讓輪播一直停住
+      onPointerEnter={(event) => {
+        if (event.pointerType === 'mouse') setHovered(true);
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType === 'mouse') setHovered(false);
+      }}
       onFocus={(event) => setKeyboardInside(isKeyboardFocus(event.target))}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setKeyboardInside(false);

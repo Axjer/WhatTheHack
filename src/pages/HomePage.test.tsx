@@ -159,11 +159,20 @@ describe('首頁主視覺輪播', () => {
       renderHome();
       const hero = screen.getByRole('region', { name: heroTitle });
 
-      fireEvent.mouseEnter(hero);
+      fireEvent.pointerEnter(hero, { pointerType: 'mouse' });
       act(() => vi.advanceTimersByTime(60_000));
       expect(slideTitle(currentSlide())).toBe('收到可疑連結？');
 
-      fireEvent.mouseLeave(hero);
+      fireEvent.pointerLeave(hero, { pointerType: 'mouse' });
+      act(() => vi.advanceTimersByTime(10_800));
+      expect(slideTitle(currentSlide())).toBe('威脅持續變化！');
+    });
+
+    it('手機點擊（觸控）不會讓輪播停住', () => {
+      renderHome();
+      const hero = screen.getByRole('region', { name: heroTitle });
+
+      fireEvent.pointerEnter(hero, { pointerType: 'touch' });
       act(() => vi.advanceTimersByTime(10_800));
       expect(slideTitle(currentSlide())).toBe('威脅持續變化！');
     });
