@@ -51,52 +51,34 @@ function keyframeSteps(source: string, name: string): Record<string, string> {
   return steps;
 }
 
-/** 交錯排版（.reveal-stagger*）各規則 animation-timeline: view(<頂端內縮>% <底部內縮>%) 的內縮值 */
-function staggerTimelineInsets(): { timeline: string; top: number; bottom: number }[] {
+/** 交錯排版（.reveal-stagger*）各規則的 animation-range 起點（cover 的百分比） */
+function staggerRangeStarts(): { range: string; start: number }[] {
   return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-    .filter(([, selector]) => /\.reveal-stagger\b/.test(selector))
-    .flatMap(([, , body]) => declarationValues(`;${body}`, 'animation-timeline'))
-    .map((timeline) => {
-      const [, top = '0', bottom = '0'] = timeline.match(/^view\(\s*(\d+(?:\.\d+)?)%\s+(\d+(?:\.\d+)?)%/) ?? [];
-      return { timeline, top: Number(top), bottom: Number(bottom) };
-    });
+    .filter(([, selector]) => /\.reveal-stagger/.test(selector))
+    .flatMap(([, , body]) => declarationValues(`;${body}`, 'animation-range'))
+    .map((range) => ({ range, start: Number(range.match(/^cover\s+(\d+(?:\.\d+)?)%/)?.[1] ?? 0) }));
 }
 
-describe('區塊捲動動畫', () => {
-  it.each(['reveal', 'reveal-stagger'])('%s：進入畫面時出現、離開畫面時消失', (name) => {
-    const steps = keyframeSteps(css, name);
+describe('區塊捲動動畫（痛點區）', () => {
+  it('進入畫面時淡入，淡入完成後留在畫面上（不再淡出）', () => {
+    const steps = keyframeSteps(css, 'reveal-stagger');
     const first = steps['from'] ?? steps['0%'];
     const last = steps['to'] ?? steps['100%'];
 
     expect(first).toMatch(/opacity:\s*0\b/);
-    expect(last).toMatch(/opacity:\s*0\b/);
+    expect(last).toMatch(/opacity:\s*1\b/);
+    expect(css).toMatch(/animation:\s*reveal-stagger\b[^;]*\bboth\b/);
   });
 
-  it('交錯排版往下捲時，內容進到畫面一段距離後才從完全空白開始淡入', () => {
-    const insets = staggerTimelineInsets();
+  it('內容進到畫面一段距離後才開始淡入', () => {
+    const starts = staggerRangeStarts();
 
-    expect(insets.length).toBeGreaterThan(0);
-    for (const { timeline, bottom } of insets) expect(bottom, timeline).toBeGreaterThan(0);
+    expect(starts.length).toBeGreaterThan(0);
+    for (const { range, start } of starts) expect(start, range).toBeGreaterThan(0);
   });
 
-  it('交錯排版上滑時，內容在碰到視窗頂端前就完全消失', () => {
-    const insets = staggerTimelineInsets();
-
-    expect(insets.length).toBeGreaterThan(0);
-    for (const { timeline, top } of insets) expect(top, timeline).toBeGreaterThan(0);
-  });
-
-  it('每條動畫範圍都延伸到離開畫面的階段', () => {
-    const ranges = declarationValues(css, 'animation-range');
-
-    expect(ranges.length).toBeGreaterThan(0);
-    for (const range of ranges) {
-      expect(range, range).toMatch(/\b(cover|exit)\b[^,]*$/);
-    }
-  });
-
-  it('.reveal 規則只在支援 animation-timeline: view() 且使用者未要求減少動態時生效', () => {
-    const contexts = enclosingAtRules(css, /\.reveal\b/);
+  it('只在支援 animation-timeline: view() 且使用者未要求減少動態時生效', () => {
+    const contexts = enclosingAtRules(css, /\.reveal-stagger/);
 
     expect(contexts.length).toBeGreaterThan(0);
     for (const atRules of contexts) {
@@ -106,9 +88,9 @@ describe('區塊捲動動畫', () => {
   });
 });
 
-describe('主視覺判定示範', () => {
-  it('動畫只在使用者未要求減少動態時播放，否則直接顯示最終畫面', () => {
-    const contexts = enclosingAtRules(css, /\.hero-demo-/);
+describe('主視覺輪播', () => {
+  it('插畫動畫只在使用者未要求減少動態時播放，否則直接顯示最終畫面', () => {
+    const contexts = enclosingAtRules(css, /\.hero-anim-/);
 
     expect(contexts.length).toBeGreaterThan(0);
     for (const atRules of contexts) {

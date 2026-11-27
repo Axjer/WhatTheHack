@@ -1,9 +1,11 @@
-import { useEffect, useId, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { loadKev } from '../data/loadKev';
 import { loadStats } from '../data/loadStats';
 import { formatApproxCount } from './formatApproxCount';
 import { buttonClass } from '../styles';
+import { ArrowIcon } from '../components/ArrowIcon';
+import { HeroCarousel } from './HeroCarousel';
 
 /** 連到站內某頁的按鈕 */
 type PageLink = { label: string; to: string };
@@ -144,58 +146,6 @@ function HomeSection({
   );
 }
 
-/** 行動區塊按鈕裡的箭頭圖示 */
-function ArrowIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M2 8h12M9 3l5 5-5 5" />
-    </svg>
-  );
-}
-
-/**
- * 主視覺旁的判定示範，三拍：逐字打出網址 → 轉成 defang 格式 → 出現燈號。
- * 動畫在 index.css 的 .hero-demo-*；減少動態或未播放時直接是最終畫面（defang 網址＋燈號）。
- */
-const demoUrl = 'https://evil.com';
-const demoUrlDefanged = 'hxxps://evil[.]com';
-
-function VerdictDemo() {
-  return (
-    <figure
-      aria-labelledby="verdict-demo-caption"
-      className="reveal flex flex-col gap-8 rounded-xl border border-text-primary/10 bg-surface-sunken p-6 shadow-sm md:p-10"
-    >
-      <figcaption id="verdict-demo-caption" className="sr-only">
-        範例：貼上網址後的判定結果
-      </figcaption>
-      {/* --chars：打字與游標動畫的步數，等於網址字元數（等寬字一步一字） */}
-      <div
-        className="grid rounded-lg bg-surface-raised px-5 py-4 font-mono text-xl md:text-2xl"
-        style={{ '--chars': demoUrl.length } as CSSProperties}
-      >
-        <span aria-hidden="true" className="hero-demo-typed col-start-1 row-start-1 justify-self-start opacity-0">
-          {demoUrl}
-        </span>
-        <span
-          aria-hidden="true"
-          className="hero-demo-caret col-start-1 row-start-1 h-[1.2em] w-0.5 self-center justify-self-start bg-text-primary opacity-0"
-        />
-        <span className="hero-demo-defanged col-start-1 row-start-1">{demoUrlDefanged}</span>
-      </div>
-      <div className="hero-demo-verdict">
-        <p
-          data-verdict
-          className="inline-block rounded-lg bg-danger-bg px-4 py-2 text-h2 font-semibold text-danger"
-        >
-          已知惡意
-        </p>
-        <p className="mt-3 text-sm text-text-secondary">這個網址在惡意網址清單中，請不要點開。</p>
-      </div>
-    </figure>
-  );
-}
-
 export default function HomePage() {
   const counts = useStatCounts();
   const stats = [
@@ -208,18 +158,7 @@ export default function HomePage() {
 
   return (
     <>
-      <section
-        aria-labelledby="hero-title"
-        className="mx-auto grid min-h-[calc(100svh-4.5rem)] w-full max-w-6xl content-center items-center gap-12 px-4 py-16 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:px-6"
-      >
-        <h1 id="hero-title" className="reveal text-display">
-          <span className="block font-bold">駭你好，先別點！</span>
-          <span className="mt-4 block text-[0.6em] font-normal text-text-secondary">
-            貼上網址，用<strong className="font-bold text-text-primary">白話</strong>告訴你能不能點
-          </span>
-        </h1>
-        <VerdictDemo />
-      </section>
+      <HeroCarousel />
 
       <HomeSection title="常見的擔心" hideTitle tone="navy">
         <ul className="flex flex-col gap-16 md:gap-16">

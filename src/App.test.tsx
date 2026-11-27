@@ -34,7 +34,7 @@ describe('導覽列', () => {
 
     await user.click(within(screen.getByRole('banner')).getByRole('link', { name: '駭你好' }));
 
-    expect(screen.getByRole('heading', { level: 1, name: /^駭你好，先別點！/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: '駭你好' })).toBeInTheDocument();
   });
 
   it('點擊連結會切換到對應頁面', async () => {
@@ -81,7 +81,7 @@ describe('頁尾', () => {
 
     await user.click(within(screen.getByRole('contentinfo')).getByRole('link', { name: '駭你好' }));
 
-    expect(screen.getByRole('heading', { level: 1, name: /^駭你好，先別點！/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: '駭你好' })).toBeInTheDocument();
   });
 });
 
@@ -93,7 +93,7 @@ describe('未知路徑', () => {
 
     await user.click(screen.getByRole('link', { name: '回到首頁' }));
 
-    expect(screen.getByRole('heading', { level: 1, name: /^駭你好，先別點！/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: '駭你好' })).toBeInTheDocument();
   });
 });
 
