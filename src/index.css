@@ -9,6 +9,8 @@
   --color-surface-raised: oklch(100% 0 0);
   /* 淺色區塊底（帶一點藍，與判定結果的「查無紀錄」灰區隔） */
   --color-surface-sunken: oklch(97% 0.01 255);
+  /* 首頁主視覺輪播的淺灰白底（#F7F8FA） */
+  --color-surface-hero: oklch(97.9% 0.003 264.5);
   /* 首頁數據卡與行動區塊的淺冷灰底（#F3F4F6）；比「查無紀錄」的底色亮，不是判定結果的灰 */
   --color-surface-muted: oklch(96.7% 0.003 264.5);
   --color-text-primary: oklch(25% 0.03 255);
@@ -63,152 +65,133 @@
 }
 
 /*
- * 區塊捲動動畫：只用原生 CSS scroll-driven animation。
+ * 區塊捲動動畫（首頁痛點區）：只用原生 CSS scroll-driven animation。
  * 不支援 animation-timeline 或使用者要求減少動態時，不套用任何初始隱藏，內容直接顯示。
  *
- * .reveal：一般區塊。進入畫面時由下往上淡入，離開畫面時往上淡出。
- * .reveal-stagger：首頁交錯排版。時間軸底部內縮 20%：內容進到畫面一段距離前完全透明，
- *   之後從空白慢慢淡入（約前 40% 的捲動距離）；
- *   往上離開時時間軸頂端內縮 25%，內容在碰到視窗頂端前就完全消失。
- * .reveal-stagger-late 晚一點出現、早一點消失，做出錯落感（用在說明卡片）。
+ * .reveal-stagger：內容進到畫面一段距離後，由下往上淡入；淡入完成後就留在畫面上，往下捲離開時不再淡出。
+ * .reveal-stagger-late 晚一點開始淡入，做出錯落感（用在說明卡片）。
  */
-@keyframes reveal {
-  from {
-    opacity: 0;
-    translate: 0 3rem;
-  }
-  25%,
-  75% {
-    opacity: 1;
-    translate: 0 0;
-  }
-  to {
-    opacity: 0;
-    translate: 0 -3rem;
-  }
-}
-
 @keyframes reveal-stagger {
   from {
     opacity: 0;
     translate: 0 4rem;
   }
-  40%,
-  60% {
+  to {
     opacity: 1;
     translate: 0 0;
-  }
-  90%,
-  to {
-    opacity: 0;
-    translate: 0 -4rem;
   }
 }
 
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
-    .reveal {
-      animation: reveal linear both;
-      animation-timeline: view();
-      animation-range: cover 0% cover 100%;
-    }
-
     .reveal-stagger,
     .reveal-stagger-late {
       animation: reveal-stagger linear both;
-      animation-timeline: view(25% 20%);
-      animation-range: cover 0% cover 100%;
+      animation-timeline: view();
+      animation-range: cover 10% cover 35%;
     }
 
     .reveal-stagger-late {
-      animation-range: cover 8% cover 92%;
+      animation-range: cover 15% cover 40%;
     }
   }
 }
 
 /*
- * 首頁主視覺的判定示範：逐字打出網址 → 轉成 defang 格式 → 出現燈號，只播一次。
- * 預設（未播放、減少動態）就是最終畫面：打字那行透明，defang 網址與燈號可見。
- * 打字用 clip-path 逐字揭露（等寬字，步數 = --chars = 網址字元數，由元件傳入），不動畫 width。
+ * 首頁主視覺輪播（HeroCarousel）：動畫只在使用者未要求減少動態時播放。
+ * 預設（未播放、減少動態）就是最終畫面：插畫元素都在定位、掃描線透明。
+ * 插畫：只在輪到的那張（[data-active]）播放；每次輪到都重新播放一次。
+ *   元素出現的先後用 CSS 變數 --delay（寫在元件的 style）。
  */
 @media (prefers-reduced-motion: no-preference) {
-  .hero-demo-typed {
-    animation: hero-demo-type 3.2s ease-out both;
+  /* 第一張：掃描線由左往右掃過網址卡片 → 掃到「@」時放大鏡出現 → 風險提示浮現 */
+  .hero-slide[data-active] .hero-anim-scan {
+    animation: hero-scan 1.6s ease-in-out 0.5s both;
   }
 
-  .hero-demo-caret {
-    animation: hero-demo-caret 3.2s ease-out both;
+  .hero-slide[data-active] .hero-anim-lens {
+    animation: hero-lens 0.45s cubic-bezier(0.3, 1.4, 0.5, 1) 1.25s both;
   }
 
-  .hero-demo-defanged {
-    animation: hero-demo-swap 3.2s ease-out both;
+  .hero-slide[data-active] .hero-anim-tag {
+    animation: hero-float-in 0.6s ease-out 2.2s both;
   }
 
-  .hero-demo-verdict {
-    animation: hero-demo-verdict 4s ease-out both;
+  /* 第二張：節點出現 → 節點之間逐一連線 → 情資卡片浮現 */
+  .hero-slide[data-active] .hero-anim-node {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: hero-node 0.4s ease-out both;
+    animation-delay: var(--delay, 0s);
+  }
+
+  .hero-slide[data-active] .hero-anim-link {
+    animation: hero-link 0.7s ease-out both;
+    animation-delay: var(--delay, 0s);
+  }
+
+  .hero-slide[data-active] .hero-anim-card {
+    animation: hero-float-in 0.6s ease-out both;
+    animation-delay: var(--delay, 0s);
   }
 }
 
-@keyframes hero-demo-type {
-  0%,
-  18.75% {
-    opacity: 1;
-    clip-path: inset(0 100% 0 0);
-    animation-timing-function: steps(var(--chars), end);
-  }
-  68.75%,
-  87.5% {
-    opacity: 1;
-    clip-path: inset(0 0 0 0);
-  }
-  to {
-    opacity: 0;
-    clip-path: inset(0 0 0 0);
-  }
-}
-
-/* 游標跟著打字前進：每步移動一個等寬字元（1ch），打完後閃兩下再消失 */
-@keyframes hero-demo-caret {
-  0%,
-  18.75% {
+/* 掃描線元素在卡片左側外面、和卡片一樣寬，右緣是掃描線：移動一個自身寬度剛好掃到卡片右緣 */
+@keyframes hero-scan {
+  from {
     opacity: 1;
     translate: 0 0;
-    animation-timing-function: steps(var(--chars), end);
   }
-  68.75% {
+  85% {
     opacity: 1;
-    translate: calc(var(--chars) * 1ch) 0;
-  }
-  75%,
-  87.5% {
-    opacity: 0;
-    translate: calc(var(--chars) * 1ch) 0;
+    translate: 100% 0;
   }
   to {
     opacity: 0;
-    translate: calc(var(--chars) * 1ch) 0;
+    translate: 100% 0;
   }
 }
 
-@keyframes hero-demo-swap {
-  0%,
-  87.5% {
+@keyframes hero-lens {
+  from {
     opacity: 0;
+    scale: 0.4;
   }
   to {
     opacity: 1;
+    scale: 1;
   }
 }
 
-@keyframes hero-demo-verdict {
-  0%,
-  90% {
+@keyframes hero-float-in {
+  from {
     opacity: 0;
-    translate: 0 0.5rem;
+    translate: 0 1.5rem;
   }
   to {
     opacity: 1;
     translate: 0 0;
+  }
+}
+
+@keyframes hero-node {
+  from {
+    opacity: 0;
+    scale: 0;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+/* 連線的 pathLength 是 1、虛線間隔也是 1：位移 1 時整條線看不到，位移 0 時畫滿 */
+@keyframes hero-link {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
   }
 }
 

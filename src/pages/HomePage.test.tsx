@@ -1,7 +1,7 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import type { KevFile } from '../data/kev';
 import type { StatsFile } from '../data/stats';
@@ -17,6 +17,9 @@ vi.mock('../data/loadStats', () => ({
 vi.mock('../data/loadKev', () => ({
   loadKev: () => (fakeKev === 'fails' ? Promise.reject(new Error('HTTP 404')) : Promise.resolve(fakeKev)),
 }));
+
+/** 首頁主視覺輪播的名稱（即頁面 H1） */
+const heroTitle = '駭你好';
 
 /** 首頁底部兩個區塊的標題（區塊名稱） */
 const statsTitle = '每天持續更新的資安防護網';
@@ -40,33 +43,167 @@ function renderHome() {
   );
 }
 
-describe('首頁主視覺', () => {
-  it('兩行標題，「白話」以粗體強調，沒有按鈕、連結、輸入框或圖片', () => {
-    renderHome();
-    const hero = screen.getByRole('region', { name: '駭你好，先別點！貼上網址，用白話告訴你能不能點' });
+/** 主視覺輪播目前顯示的那一張（沒輪到的那張對輔助科技隱藏） */
+function currentSlide() {
+  return within(screen.getByRole('region', { name: heroTitle })).getByRole('group');
+}
 
-    const heading = within(hero).getByRole('heading', { level: 1 });
-    expect(within(heading).getByText('白話').tagName).toBe('STRONG');
-    for (const role of ['button', 'link', 'textbox', 'img']) {
-      expect(within(hero).queryAllByRole(role)).toHaveLength(0);
-    }
+function slideTitle(slide: HTMLElement) {
+  return within(slide).getByRole('heading', { level: 2 }).textContent;
+}
+
+describe('首頁主視覺輪播', () => {
+  it('頁面標題（H1）是「駭你好」；兩張輪播依序是網址分析、最新情資', () => {
+    renderHome();
+    const hero = screen.getByRole('region', { name: heroTitle });
+
+    expect(within(hero).getByRole('heading', { level: 1 }).textContent).toBe(heroTitle);
+    const titles = within(hero)
+      .getAllByRole('heading', { level: 2, hidden: true })
+      .map((heading) => heading.textContent);
+    expect(titles).toEqual(['收到可疑連結？', '威脅持續變化！']);
   });
 
-  it('旁邊示範判定結果：網址以 defang 格式顯示（不可點擊），並給出「已知惡意」燈號', () => {
+  it('一開始顯示第一張：主標、副標與「開始分析」按鈕；第二張對輔助科技隱藏且不可操作', () => {
     renderHome();
-    const hero = screen.getByRole('region', { name: '駭你好，先別點！貼上網址，用白話告訴你能不能點' });
-    const demo = within(hero).getByRole('figure', { name: '範例：貼上網址後的判定結果' });
+    const hero = screen.getByRole('region', { name: heroTitle });
+    const slide = currentSlide();
 
-    expect(within(demo).getByText('hxxps://evil[.]com')).toBeInTheDocument();
-    expect(within(demo).getByText('已知惡意', { selector: 'p' }).textContent).toBe('已知惡意');
+    expect(slideTitle(slide)).toBe('收到可疑連結？');
+    expect(within(slide).getByText('透過網址分析，幫助你辨識潛在風險。')).toBeInTheDocument();
+    expect(within(slide).getByRole('link', { name: '開始分析' })).toBeInTheDocument();
+    expect(within(hero).queryByRole('link', { name: '了解情資' })).not.toBeInTheDocument();
+    const hidden = within(hero).getAllByRole('group', { hidden: true }).find((group) => group !== slide);
+    expect(hidden).toHaveAttribute('inert');
+  });
+
+  it('「開始分析」前往網址分析頁', async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(within(currentSlide()).getByRole('link', { name: '開始分析' }));
+
+    expect(screen.getByRole('heading', { level: 1, name: '網址分析' })).toBeInTheDocument();
+  });
+
+  it('按「下一張」換到第二張，「了解情資」前往最新情資頁', async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByRole('button', { name: '下一張' }));
+    const slide = currentSlide();
+    expect(slideTitle(slide)).toBe('威脅持續變化！');
+    expect(within(slide).getByText('用簡單易懂的方式掌握威脅動態。')).toBeInTheDocument();
+
+    await user.click(within(slide).getByRole('link', { name: '了解情資' }));
+    expect(screen.getByRole('heading', { level: 1, name: '最新情資' })).toBeInTheDocument();
+  });
+
+  it('上一張／下一張到頭會繞回另一端', async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByRole('button', { name: '上一張' }));
+    expect(slideTitle(currentSlide())).toBe('威脅持續變化！');
+    await user.click(screen.getByRole('button', { name: '下一張' }));
+    expect(slideTitle(currentSlide())).toBe('收到可疑連結？');
+  });
+
+  it('點指示線切換到對應的那一張，並標示目前是哪一張', async () => {
+    const user = userEvent.setup();
+    renderHome();
+    const first = screen.getByRole('button', { name: '第 1 張：網址分析' });
+    const second = screen.getByRole('button', { name: '第 2 張：最新情資' });
+    expect(first).toHaveAttribute('aria-current', 'true');
+    expect(second).not.toHaveAttribute('aria-current');
+
+    await user.click(second);
+
+    expect(slideTitle(currentSlide())).toBe('威脅持續變化！');
+    expect(second).toHaveAttribute('aria-current', 'true');
+    expect(first).not.toHaveAttribute('aria-current');
+  });
+
+  describe('自動輪播（插畫動畫播完後 8 秒）', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('第一張動畫（2.8 秒）播完後滿 8 秒換到第二張，再依第二張的動畫長度（1.9 秒）＋8 秒換回第一張', () => {
+      renderHome();
+
+      act(() => vi.advanceTimersByTime(10_799));
+      expect(slideTitle(currentSlide())).toBe('收到可疑連結？');
+      act(() => vi.advanceTimersByTime(1));
+      expect(slideTitle(currentSlide())).toBe('威脅持續變化！');
+
+      act(() => vi.advanceTimersByTime(9_900));
+      expect(slideTitle(currentSlide())).toBe('收到可疑連結？');
+    });
+
+    it('手動換張後重新計時', () => {
+      renderHome();
+
+      act(() => vi.advanceTimersByTime(5_000));
+      fireEvent.click(screen.getByRole('button', { name: '第 2 張：最新情資' }));
+      act(() => vi.advanceTimersByTime(9_899));
+      expect(slideTitle(currentSlide())).toBe('威脅持續變化！');
+      act(() => vi.advanceTimersByTime(1));
+      expect(slideTitle(currentSlide())).toBe('收到可疑連結？');
+    });
+
+    it('滑鼠停在主視覺上時不換張，移開後重新計時', () => {
+      renderHome();
+      const hero = screen.getByRole('region', { name: heroTitle });
+
+      fireEvent.mouseEnter(hero);
+      act(() => vi.advanceTimersByTime(60_000));
+      expect(slideTitle(currentSlide())).toBe('收到可疑連結？');
+
+      fireEvent.mouseLeave(hero);
+      act(() => vi.advanceTimersByTime(10_800));
+      expect(slideTitle(currentSlide())).toBe('威脅持續變化！');
+    });
+
+    it('使用者要求減少動態時不自動換張', () => {
+      vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('reduce') }));
+      renderHome();
+
+      act(() => vi.advanceTimersByTime(60_000));
+      expect(slideTitle(currentSlide())).toBe('收到可疑連結？');
+      vi.unstubAllGlobals();
+    });
+
+    it('沒有暫停按鈕', () => {
+      renderHome();
+      expect(screen.queryByRole('button', { name: /暫停|繼續/ })).not.toBeInTheDocument();
+    });
+  });
+
+  it('手機上左右滑動切換', () => {
+    renderHome();
+    const hero = screen.getByRole('region', { name: heroTitle });
+
+    fireEvent.touchStart(hero, { touches: [{ clientX: 300 }] });
+    fireEvent.touchEnd(hero, { changedTouches: [{ clientX: 100 }] });
+    expect(slideTitle(currentSlide())).toBe('威脅持續變化！');
+
+    fireEvent.touchStart(hero, { touches: [{ clientX: 100 }] });
+    fireEvent.touchEnd(hero, { changedTouches: [{ clientX: 300 }] });
+    expect(slideTitle(currentSlide())).toBe('收到可疑連結？');
+  });
+
+  it('第一張的插畫示範判定結果：網址以 defang 格式顯示（不可點擊）、「可疑」燈號與白話說明', () => {
+    renderHome();
+    const demo = within(currentSlide()).getByRole('figure', { name: '範例：檢查網址後的判定結果' });
+
+    expect(demo.textContent).toContain('hxxps://bank.com@evil[.]com');
+    expect(within(demo).getByText('可疑', { selector: '[data-verdict]' })).toBeInTheDocument();
+    expect(within(demo).getByText(/網址中有「@」.*實際連到的是/)).toBeInTheDocument();
     expect(within(demo).queryAllByRole('link')).toHaveLength(0);
-  });
-
-  it('燈號下方用白話說明這個判定結果', () => {
-    renderHome();
-    const demo = screen.getByRole('figure', { name: '範例：貼上網址後的判定結果' });
-
-    expect(within(demo).getByText(/在惡意網址清單中.*不要點開/)).toBeInTheDocument();
   });
 });
 
@@ -221,7 +358,7 @@ describe('配色', () => {
   it('首頁只有主視覺示範是判定結果', () => {
     renderHome();
     const verdicts = screen.getByRole('main').querySelectorAll('[data-verdict]');
-    const demo = screen.getByRole('figure', { name: '範例：貼上網址後的判定結果' });
+    const demo = screen.getByRole('figure', { name: '範例：檢查網址後的判定結果' });
 
     expect(verdicts).toHaveLength(1);
     expect(demo).toContainElement(verdicts[0] as HTMLElement);
