@@ -350,16 +350,21 @@ describe('行動按鈕', () => {
   });
 
   it.each([
-    { name: '了解更多網址分析', heading: '網址分析' },
-    { name: '了解更多最新情資', heading: '最新情資' },
-  ])('「$name」前往 $heading 頁', async ({ name, heading }) => {
+    { name: '了解更多網址分析', section: '網址分析怎麼判定' },
+    { name: '了解更多最新情資', section: '最新情資怎麼整理' },
+  ])('「$name」前往來源與說明頁的「$section」段落', async ({ name, section }) => {
     const user = userEvent.setup();
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
     renderHome();
     const cta = screen.getByRole('region', { name: actionsTitle });
 
     await user.click(within(cta).getByRole('link', { name }));
 
-    expect(screen.getByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: '來源與說明' })).toBeInTheDocument();
+    expect(scrollIntoView.mock.contexts).toEqual([screen.getByRole('region', { name: section })]);
+    // jsdom 沒有 scrollIntoView：用完拿掉，不留給後面的測試
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
   });
 });
 

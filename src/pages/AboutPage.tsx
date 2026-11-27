@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { useLocation } from 'react-router';
 import type { Verdict } from '../analysis/analyzeUrl';
 import ExternalIcon from '../components/ExternalIcon';
 import { interactiveClass, textLinkClass } from '../styles';
@@ -323,6 +324,12 @@ function TableOfContents() {
  * 用詞以 GLOSSARY.md 為準；燈號顏色只出現在判定結果本身。
  */
 export default function AboutPage() {
+  // 從其他頁連到本頁某一段（例如首頁的「了解更多」→ /about#intel）：React Router 換頁不會自動捲到錨點，這裡補上
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView();
+  }, [hash]);
+
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 md:px-6 md:py-16">
       <div className="max-w-3xl">
