@@ -2,11 +2,13 @@ import type { ReactNode } from 'react';
 import type { Verdict } from '../analysis/analyzeUrl';
 import ExternalIcon from '../components/ExternalIcon';
 import { interactiveClass, textLinkClass } from '../styles';
+import { KEV_WINDOW_DAYS } from '../data/kev';
 import { verdictLight } from '../verdictLight';
 
 /** 本頁各段落：目錄與段落標題共用 */
 const sections = [
   { id: 'verdict', title: '網址分析怎麼判定' },
+  { id: 'intel', title: '最新情資怎麼整理' },
   { id: 'sources', title: '資料來源' },
   { id: 'privacy', title: '隱私' },
   { id: 'disclaimer', title: '免責聲明' },
@@ -158,7 +160,87 @@ function VerdictLadder() {
   );
 }
 
-type Source = { name: string; url: string; description: string; usedIn: string };
+/** 和最新情資頁同樣的標籤外觀，讓讀者到情資頁一眼認得（只用主色深藍，不用燈號顏色） */
+function AiSummaryTag() {
+  return (
+    <span className="inline-block rounded-full bg-surface-sunken px-3 py-1 text-sm font-medium whitespace-nowrap text-primary">
+      AI 摘要
+    </span>
+  );
+}
+
+function RansomwareTag() {
+  return (
+    <span className="inline-block rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-medium whitespace-nowrap text-primary">
+      已被用於勒索軟體攻擊
+    </span>
+  );
+}
+
+/** 新聞摘要每天產生的先後順序 */
+const newsSteps = [
+  '取得 The Hacker News 過去 24 小時的新聞。',
+  'AI 以資安專家的角度，挑出最重要、影響最大的 3 篇。',
+  'AI 只根據原文，把每篇寫成 2–3 句白話摘要。',
+];
+
+function SubsectionTitle({ children }: { children: ReactNode }) {
+  return <h3 className="text-xl leading-snug font-bold">{children}</h3>;
+}
+
+/** 最新情資怎麼整理：新聞摘要怎麼產生、可能出錯；最近正被攻擊的軟體代表什麼、怎麼看 */
+function IntelExplanation() {
+  return (
+    <>
+      <p>
+        最新情資頁每天自動整理兩件事：三則值得注意的資安新聞，以及近 {KEV_WINDOW_DAYS}{' '}
+        天正被攻擊的軟體。它幫你掌握最近發生了什麼，不會檢查你的裝置。
+      </p>
+
+      <div className="mt-6">
+        <SubsectionTitle>新聞摘要</SubsectionTitle>
+        <ol
+          aria-label="新聞摘要的產生步驟"
+          className="mt-3 flex list-decimal flex-col gap-2 pl-6 marker:font-bold marker:text-primary"
+        >
+          {newsSteps.map((step) => (
+            <li key={step} className="pl-1">
+              {step}
+            </li>
+          ))}
+        </ol>
+        <p className="mt-4">
+          每篇摘要都標上 <AiSummaryTag />，並附上「閱讀原文（英文）」連結。
+        </p>
+        {/* 提醒用帶藍的淺色底：紅黃灰只留給判定結果 */}
+        <div className="mt-4 rounded-xl bg-surface-sunken p-4 md:px-6">
+          <p className="font-bold">AI 摘要可能出錯</p>
+          <p className="mt-1">
+            AI 可能誤解原文、漏掉重點，或寫錯數字與產品名稱。新聞和你有關時，請點「閱讀原文（英文）」確認，以原文為準。
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <SubsectionTitle>最近正被攻擊的軟體</SubsectionTitle>
+        <p className="mt-3">
+          清單來自美國網路安全機構（CISA）的已被利用漏洞清單。被收錄代表 CISA 已確認有攻擊者正在利用這個軟體的漏洞。
+        </p>
+        <ul className="mt-3 flex list-disc flex-col gap-2 pl-6 marker:text-text-secondary">
+          <li>同一個軟體的多個漏洞合併成一項，寫出「幾個漏洞正被利用」和最近一次被收錄的日期。</li>
+          <li>Windows、Chrome、iPhone、家用路由器這類一般人常用的軟體與設備排在前面；其他多為公司或機構使用的產品，預設收起來。</li>
+          <li>
+            標有 <RansomwareTag /> 的，代表其中有漏洞被用來散布勒索軟體。
+          </li>
+          <li>不列出漏洞編號與技術細節，只告訴你哪些軟體需要注意。</li>
+        </ul>
+        <p className="mt-4 font-medium">如果你有使用清單上的軟體或設備，請盡快更新到最新版。</p>
+      </div>
+    </>
+  );
+}
+
+type Source = { name: string; url: string; description: string };
 
 /** 四個公開資料來源 */
 const dataSources: Source[] = [
@@ -166,33 +248,29 @@ const dataSources: Source[] = [
     name: 'URLhaus',
     url: 'https://urlhaus.abuse.ch/',
     description: '由瑞士的非營利資安組織 abuse.ch 維護，收錄被用來散布惡意程式的網址。',
-    usedIn: '網址分析（惡意網址清單）',
   },
   {
-    name: 'OpenPhish（免費版）',
+    name: 'OpenPhish',
     url: 'https://openphish.com/',
     description: '自動偵測並收錄釣魚網站，也就是假冒銀行、購物網站等，騙取帳號密碼的網頁。',
-    usedIn: '網址分析（惡意網址清單）',
   },
   {
     name: 'The Hacker News',
     url: 'https://thehackernews.com/',
     description: '英文的資安新聞網站。',
-    usedIn: '最新情資的新聞摘要',
   },
   {
-    name: 'CISA 已被利用漏洞清單',
+    name: 'CISA KEV',
     url: 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog',
     description:
       '美國網路安全機構（CISA）公布的 Known Exploited Vulnerabilities 清單，收錄已確認有攻擊者在利用的軟體漏洞。',
-    usedIn: '最新情資的「最近正被攻擊的軟體」',
   },
 ];
 
 function SourceList() {
   return (
     <dl className="mt-6 border-t border-text-primary/10">
-      {dataSources.map(({ name, url, description, usedIn }) => (
+      {dataSources.map(({ name, url, description }) => (
         <div key={name} className="grid gap-x-8 gap-y-1 border-b border-text-primary/10 py-5 md:grid-cols-[14rem_1fr]">
           <dt className="font-bold">
             <a href={url} target="_blank" rel="noopener noreferrer" className={textLinkClass}>
@@ -203,7 +281,6 @@ function SourceList() {
           </dt>
           <dd>
             <p>{description}</p>
-            <p className="mt-1 text-sm text-text-secondary">用在：{usedIn}</p>
           </dd>
         </div>
       ))}
@@ -251,7 +328,7 @@ export default function AboutPage() {
       <div className="max-w-3xl">
         <h1>來源與說明</h1>
         <p className="mt-4 text-text-secondary">
-          網址分析怎麼判定、資料從哪裡來、有哪些限制，以及你輸入的網址會怎麼處理。
+          網址分析怎麼判定、最新情資怎麼整理、資料從哪裡來、有哪些限制，以及你輸入的網址會怎麼處理。
         </p>
       </div>
 
@@ -268,6 +345,10 @@ export default function AboutPage() {
               分析報告與本頁的範例網址都以 defang 格式顯示：把 <ExampleUrl>http</ExampleUrl> 改成{' '}
               <ExampleUrl>hxxp</ExampleUrl>、把「.」改成 <ExampleUrl>[.]</ExampleUrl>，網址就不會被誤點開。
             </p>
+          </Section>
+
+          <Section id="intel">
+            <IntelExplanation />
           </Section>
 
           <Section id="sources">

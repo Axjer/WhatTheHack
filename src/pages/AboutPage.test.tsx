@@ -17,11 +17,12 @@ describe('來源與說明頁', () => {
   it('列出四個資料來源，各自在新分頁開啟', () => {
     renderPage();
     const sources = section('資料來源');
-    for (const name of [/^URLhaus/, /^OpenPhish/, /^The Hacker News/, /^CISA 已被利用漏洞清單/]) {
+    for (const name of [/^URLhaus/, /^OpenPhish（在新分頁開啟）/, /^The Hacker News/, /^CISA KEV/]) {
       const link = within(sources).getByRole('link', { name });
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
     }
+    expect(sources).not.toHaveTextContent('用在：');
   });
 
   it('依序說明判定順序，每一步符合就停在對應的判定結果', () => {
@@ -68,10 +69,48 @@ describe('來源與說明頁', () => {
     expect(lastStep).toHaveTextContent('還沒被收錄');
   });
 
-  it('不另設「為什麼沒有綠燈」與「AI 摘要怎麼產生」兩段', () => {
+  it('不另設「為什麼沒有綠燈」一段', () => {
     renderPage();
     expect(screen.queryByRole('region', { name: '為什麼沒有綠燈' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'AI 摘要怎麼產生' })).not.toBeInTheDocument();
+  });
+
+  it('最新情資怎麼整理：分成新聞摘要與最近正被攻擊的軟體', () => {
+    renderPage();
+    const titles = within(section('最新情資怎麼整理'))
+      .getAllByRole('heading', { level: 3 })
+      .map((heading) => heading.textContent);
+    expect(titles).toEqual(['新聞摘要', '最近正被攻擊的軟體']);
+  });
+
+  it('依序說明新聞摘要怎麼產生，並提醒 AI 摘要可能出錯、以原文為準', () => {
+    renderPage();
+    const region = section('最新情資怎麼整理');
+    const steps = within(within(region).getByRole('list', { name: '新聞摘要的產生步驟' }))
+      .getAllByRole('listitem')
+      .map((step) => step.textContent);
+
+    expect(steps).toHaveLength(3);
+    expect(steps[0]).toMatch(/The Hacker News 過去 24 小時/);
+    expect(steps[1]).toMatch(/3 篇/);
+    expect(steps[2]).toMatch(/只根據原文/);
+    expect(region).toHaveTextContent('AI 摘要可能出錯');
+    expect(region).toHaveTextContent('以原文為準');
+  });
+
+  it('說明最近正被攻擊的軟體代表什麼、勒索軟體標籤，以及該怎麼做', () => {
+    renderPage();
+    const region = section('最新情資怎麼整理');
+
+    expect(region).toHaveTextContent('CISA 已確認有攻擊者正在利用');
+    expect(region).not.toHaveTextContent('不只是理論上');
+    expect(within(region).getByText('已被用於勒索軟體攻擊')).toBeInTheDocument();
+    expect(region).toHaveTextContent('請盡快更新到最新版');
+  });
+
+  it('最新情資的說明不使用燈號顏色', () => {
+    renderPage();
+    const classes = [...section('最新情資怎麼整理').querySelectorAll('*')].flatMap((element) => [...element.classList]);
+    expect(classes.filter((name) => /-(danger|warning|unknown)(-bg)?(\/\d+)?$/.test(name))).toEqual([]);
   });
 
   it('隱私聲明：輸入不離開瀏覽器', () => {
