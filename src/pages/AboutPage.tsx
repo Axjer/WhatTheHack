@@ -230,7 +230,7 @@ function IntelExplanation() {
           <li>同一個軟體的多個漏洞合併成一項，寫出「幾個漏洞正被利用」和最近一次被收錄的日期。</li>
           <li>Windows、Chrome、iPhone、家用路由器這類一般人常用的軟體與設備排在前面；其他多為公司或機構使用的產品，預設收起來。</li>
           <li>
-            標有 <RansomwareTag /> 的，代表其中有漏洞被用來散布勒索軟體。
+            標有 <RansomwareTag /> 的，代表其中有漏洞被用於勒索軟體攻擊。
           </li>
           <li>不列出漏洞編號與技術細節，只告訴你哪些軟體需要注意。</li>
         </ul>
@@ -252,12 +252,12 @@ const dataSources: Source[] = [
   {
     name: 'OpenPhish',
     url: 'https://openphish.com/',
-    description: '自動偵測並收錄釣魚網站，也就是假冒銀行、購物網站等，騙取帳號密碼的網頁。',
+    description: '自動偵測並收錄網路釣魚威脅情資的自動化平台。',
   },
   {
     name: 'The Hacker News',
     url: 'https://thehackernews.com/',
-    description: '英文的資安新聞網站。',
+    description: '資安新聞媒體，專注於資安威脅情報、漏洞修補、資料外洩與攻防分析。',
   },
   {
     name: 'CISA KEV',
