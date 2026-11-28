@@ -344,8 +344,8 @@ describe('行動按鈕', () => {
     renderHome();
     const cta = screen.getByRole('region', { name: actionsTitle });
 
-    expect(within(cta).getByText('看看系統依什麼順序，判定已知惡意、可疑或查無紀錄')).toBeInTheDocument();
-    expect(within(cta).getByText('了解每天的新聞摘要怎麼產生，以及正被攻擊的軟體清單代表什麼')).toBeInTheDocument();
+    expect(within(cta).getByText('我們比對哪些清單？')).toBeInTheDocument();
+    expect(within(cta).getByText('每日情資從哪裡來？')).toBeInTheDocument();
   });
 
   it('兩顆按鈕的文字都是「了解更多」，並各自附上只給螢幕閱讀器讀的目的地', () => {

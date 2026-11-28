@@ -76,14 +76,14 @@ const statValueSize = 'text-[length:min(3.75rem,19cqi)] leading-none tracking-ti
 const actions: { title: string; description: string; link: PageLink; sectionTitle: string }[] = [
   {
     title: '網址分析',
-    description: '看看系統依什麼順序，判定已知惡意、可疑或查無紀錄',
+    description: '我們比對哪些清單？',
     link: { label: '了解更多', to: '/about#verdict' },
     // 按鈕前往的說明段落標題，只給螢幕閱讀器讀：兩顆按鈕文字相同，靠這段分辨目的地
     sectionTitle: '網址分析怎麼判定',
   },
   {
     title: '最新情資',
-    description: '了解每天的新聞摘要怎麼產生，以及正被攻擊的軟體清單代表什麼',
+    description: '每日情資從哪裡來？',
     link: { label: '了解更多', to: '/about#intel' },
     sectionTitle: '最新情資怎麼整理',
   },
