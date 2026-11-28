@@ -340,18 +340,26 @@ describe('行動按鈕', () => {
     expect(blocks).toEqual(['網址分析', '最新情資']);
   });
 
+  it('說明文字介紹按鈕前往的說明段落會講什麼', () => {
+    renderHome();
+    const cta = screen.getByRole('region', { name: actionsTitle });
+
+    expect(within(cta).getByText('我們怎麼判定網址？')).toBeInTheDocument();
+    expect(within(cta).getByText('威脅情資從哪裡來？')).toBeInTheDocument();
+  });
+
   it('兩顆按鈕的文字都是「了解更多」，並各自附上只給螢幕閱讀器讀的目的地', () => {
     renderHome();
     const cta = screen.getByRole('region', { name: actionsTitle });
     const links = within(cta).getAllByRole('link');
 
-    expect(links.map((link) => link.textContent)).toEqual(['了解更多網址分析', '了解更多最新情資']);
+    expect(links.map((link) => link.textContent)).toEqual(['了解更多網址分析怎麼判定', '了解更多最新情資怎麼整理']);
     expect(within(cta).getAllByText('了解更多', { exact: false, ignore: '.sr-only' })).toHaveLength(2);
   });
 
   it.each([
-    { name: '了解更多網址分析', section: '網址分析怎麼判定' },
-    { name: '了解更多最新情資', section: '最新情資怎麼整理' },
+    { name: '了解更多網址分析怎麼判定', section: '網址分析怎麼判定' },
+    { name: '了解更多最新情資怎麼整理', section: '最新情資怎麼整理' },
   ])('「$name」前往來源與說明頁的「$section」段落', async ({ name, section }) => {
     const user = userEvent.setup();
     const scrollIntoView = vi.fn();

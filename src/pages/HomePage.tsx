@@ -72,17 +72,20 @@ function useStatCounts(): StatCounts {
  */
 const statValueSize = 'text-[length:min(3.75rem,19cqi)] leading-none tracking-tight';
 
-/** 頁面最底部的兩個行動區塊 */
-const actions: { title: string; description: string; link: PageLink }[] = [
+/** 頁面最底部的兩個行動區塊：按鈕前往來源與說明頁的對應段落，說明文字介紹那一段會講什麼 */
+const actions: { title: string; description: string; link: PageLink; sectionTitle: string }[] = [
   {
     title: '網址分析',
-    description: '貼上一個網址，馬上看到判定結果與建議',
+    description: '我們怎麼判定網址？',
     link: { label: '了解更多', to: '/about#verdict' },
+    // 按鈕前往的說明段落標題，只給螢幕閱讀器讀：兩顆按鈕文字相同，靠這段分辨目的地
+    sectionTitle: '網址分析怎麼判定',
   },
   {
     title: '最新情資',
-    description: '每天整理值得注意的資安新聞，以及已遭駭客利用的漏洞',
+    description: '威脅情資從哪裡來？',
     link: { label: '了解更多', to: '/about#intel' },
+    sectionTitle: '最新情資怎麼整理',
   },
 ];
 
@@ -220,14 +223,14 @@ export default function HomePage() {
           spacing="groupBottom"
         >
           <ul className="grid gap-6 md:grid-cols-2">
-            {actions.map(({ title, description, link }) => (
+            {actions.map(({ title, description, link, sectionTitle }) => (
               <li key={title} className="flex flex-col rounded-xl bg-surface-muted p-6 md:p-10">
                 <h3 className="text-2xl font-semibold md:text-3xl">{title}</h3>
                 <p className="mt-3 mb-8 text-text-secondary">{description}</p>
                 <Link to={link.to} className={`mt-auto self-start ${buttonClass('navy')} font-semibold!`}>
                   {link.label}
                   {/* 兩顆按鈕文字相同，附上目的地讓螢幕閱讀器分得出來 */}
-                  <span className="sr-only">{title}</span>
+                  <span className="sr-only">{sectionTitle}</span>
                   <ArrowIcon />
                 </Link>
               </li>
