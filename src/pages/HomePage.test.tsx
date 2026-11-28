@@ -344,7 +344,7 @@ describe('行動按鈕', () => {
     renderHome();
     const cta = screen.getByRole('region', { name: actionsTitle });
 
-    expect(within(cta).getByText('我們比對哪些清單？')).toBeInTheDocument();
+    expect(within(cta).getByText('我們怎麼判定網址？')).toBeInTheDocument();
     expect(within(cta).getByText('威脅情資從哪裡來？')).toBeInTheDocument();
   });
 

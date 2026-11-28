@@ -76,7 +76,7 @@ const statValueSize = 'text-[length:min(3.75rem,19cqi)] leading-none tracking-ti
 const actions: { title: string; description: string; link: PageLink; sectionTitle: string }[] = [
   {
     title: '網址分析',
-    description: '我們比對哪些清單？',
+    description: '我們怎麼判定網址？',
     link: { label: '了解更多', to: '/about#verdict' },
     // 按鈕前往的說明段落標題，只給螢幕閱讀器讀：兩顆按鈕文字相同，靠這段分辨目的地
     sectionTitle: '網址分析怎麼判定',
