@@ -345,7 +345,7 @@ describe('行動按鈕', () => {
     const cta = screen.getByRole('region', { name: actionsTitle });
 
     expect(within(cta).getByText('我們比對哪些清單？')).toBeInTheDocument();
-    expect(within(cta).getByText('每日情資從哪裡來？')).toBeInTheDocument();
+    expect(within(cta).getByText('威脅情資從哪裡來？')).toBeInTheDocument();
   });
 
   it('兩顆按鈕的文字都是「了解更多」，並各自附上只給螢幕閱讀器讀的目的地', () => {

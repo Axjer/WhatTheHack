@@ -83,7 +83,7 @@ const actions: { title: string; description: string; link: PageLink; sectionTitl
   },
   {
     title: '最新情資',
-    description: '每日情資從哪裡來？',
+    description: '威脅情資從哪裡來？',
     link: { label: '了解更多', to: '/about#intel' },
     sectionTitle: '最新情資怎麼整理',
   },
